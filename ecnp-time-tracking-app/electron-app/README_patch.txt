@@ -1,0 +1,1 @@
+This patch replaces main.js and preload.js with production versions.

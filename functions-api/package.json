@@ -1,0 +1,1 @@
+{"name":"ecnp-functions-api","version":"1.0.0","private":true,"scripts":{"start":"func start"},"dependencies":{"@pnp/nodejs-commonjs":"^3.10.0","@pnp/sp-commonjs":"^3.10.0","exceljs":"^4.4.0"}}

@@ -12,20 +12,24 @@
     "dist": "npm run react-build && electron-builder"
   },
 
-  "build": {
-    "appId": "org.ecnp.timetracker",
-    "productName": "ECNP Time Tracker",
-    "directories": {
-      "buildResources": "build"
-    },
-    "win": {
-      "sign": false,
-      "target": [
-        { "target": "portable", "arch": "x64" },
-        { "target": "zip", "arch": "x64" }
-      ]
-    }
+"build": {
+  "appId": "org.ecnp.timetracker",
+  "productName": "ECNP Time Tracker",
+
+  "directories": {
+    "output": "dist/portable-build",
+    "buildResources": "build"
   },
+
+  "win": {
+    "sign": false,
+    "verifyUpdateCodeSignature": false,
+    "target": [
+      { "target": "portable", "arch": "x64" },
+      { "target": "zip", "arch": "x64" }
+    ]
+  }
+}
 
   "dependencies": {
     "@azure/msal-browser": "^3.12.0",

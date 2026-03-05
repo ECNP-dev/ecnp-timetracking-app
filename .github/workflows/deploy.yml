@@ -40,10 +40,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ECNP-TimeTracker-Portable
-          path: |
-            electron-app/dist/*.exe
-            electron-app/dist/*.zip
-
+          path: electron-app/dist/portable-build/**
 
   deploy-functions:
     runs-on: ubuntu-latest

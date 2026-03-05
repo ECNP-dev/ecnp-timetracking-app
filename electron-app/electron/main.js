@@ -1,6 +1,6 @@
 const { app, BrowserWindow, protocol, Menu, Tray } = require("electron");
 const path = require("path");
-const isDev = require("electron-is-dev");
+const isDev = process.env.NODE_ENV === "development";
 
 let win;
 let tray;

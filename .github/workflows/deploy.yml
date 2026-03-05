@@ -26,7 +26,6 @@ jobs:
 
       - name: Build portable Electron version
         working-directory: electron-app
-        env:
         run: npm run dist
 
       - name: Upload Portable Build

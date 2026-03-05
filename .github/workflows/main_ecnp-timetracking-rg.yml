@@ -24,9 +24,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node ${{ env.NODE_VERSION }} Environment
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: 18
 
       - name: 'Resolve Project Dependencies Using Npm'
         shell: pwsh
@@ -70,4 +70,5 @@ jobs:
           app-name: 'ecnp-timetracking-rg'
           slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
           

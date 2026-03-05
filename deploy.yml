@@ -50,7 +50,7 @@ jobs:
       - name: Install backend dependencies (Functions API)
         working-directory: functions-api
         run: |
-          npm ci || npm install --legacy-peer-deps
+          npm install --legacy-peer-deps
 
       - name: Zip Function App package
         run: |

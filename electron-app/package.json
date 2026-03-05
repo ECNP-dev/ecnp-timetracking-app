@@ -28,8 +28,7 @@
       { "target": "portable", "arch": "x64" },
       { "target": "zip", "arch": "x64" }
     ]
-  }
-}
+  },
 
   "dependencies": {
     "@azure/msal-browser": "^3.12.0",

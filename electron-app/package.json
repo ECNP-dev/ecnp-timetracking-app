@@ -25,24 +25,18 @@
 
   "win": {
     "target": [
-      { "target": "portable", "arch": "x64" },
-      { "target": "zip", "arch": "x64" }
+      {
+        "target": "portable",
+        "arch": "x64"
+      },
+      {
+        "target": "zip",
+        "arch": "x64"
+      }
     ],
     "sign": false,
     "signAndEditExecutable": false,
-    "verifyUpdateCodeSignature": false,
-    "publisherName": null,
-    "certificateFile": null,
-    "certificateSubjectName": null,
-    "certificateSha1": null,
-    "rfc3161TimeStampServer": null
-  },
-
-  "nsis": {
-    "buildInstaller": false,
-    "oneClick": false,
-    "artifactName": null,
-    "deleteAppDataOnUninstall": false
+    "verifyUpdateCodeSignature": false
   },
 
   "portable": {

@@ -34,37 +34,37 @@ jobs:
           path: electron-app/dist/*.exe
 
 
-deploy-functions:
-  runs-on: ubuntu-latest
-  needs: build-electron
+  deploy-functions:
+    runs-on: ubuntu-latest
+    needs: build-electron
 
-  steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js 18 for Azure Functions
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
+      - name: Set up Node.js 18 for Azure Functions
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-    - name: Install backend dependencies (Functions API)
-      working-directory: functions-api
-      run: |
-        npm ci || npm install --legacy-peer-deps
+      - name: Install backend dependencies (Functions API)
+        working-directory: functions-api
+        run: |
+          npm ci || npm install --legacy-peer-deps
 
-    - name: Zip Function App package
-      run: |
-        cd functions-api
-        zip -r ../functions.zip .
+      - name: Zip Function App package
+        run: |
+          cd functions-api
+          zip -r ../functions.zip .
 
-    - name: Azure Login using Service Principal
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Azure Login using Service Principal
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy to Azure Function App
-      uses: Azure/functions-action@v1
-      with:
-        app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
-        package: functions.zip
+      - name: Deploy to Azure Function App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
+          package: functions.zip
 

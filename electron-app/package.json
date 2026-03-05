@@ -36,6 +36,8 @@
     ]
   },
 
+  "nsis": null,
+
   "portable": {
     "useZip": false
   }

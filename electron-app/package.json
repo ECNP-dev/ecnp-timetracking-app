@@ -11,25 +11,28 @@
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run react-build && electron-builder"
   },
-
-"build": {
-  "appId": "org.ecnp.timetracker",
-  "productName": "ECNP Time Tracker",
-
-  "directories": {
-    "output": "dist/portable-build",
-    "buildResources": "build"
+  "build": {
+    "appId": "org.ecnp.timetracker",
+    "productName": "ECNP Time Tracker",
+    "directories": {
+      "output": "dist/portable-build",
+      "buildResources": "build"
+    },
+    "win": {
+      "sign": false,
+      "verifyUpdateCodeSignature": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": "x64"
+        },
+        {
+          "target": "zip",
+          "arch": "x64"
+        }
+      ]
+    }
   },
-
-  "win": {
-    "sign": false,
-    "verifyUpdateCodeSignature": false,
-    "target": [
-      { "target": "portable", "arch": "x64" },
-      { "target": "zip", "arch": "x64" }
-    ]
-  },
-
   "dependencies": {
     "@azure/msal-browser": "^3.12.0",
     "@azure/msal-react": "^2.0.17",
@@ -37,7 +40,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
-
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.1.4",

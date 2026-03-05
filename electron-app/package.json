@@ -20,8 +20,8 @@
     },
     "win": {
       "target": [
-        "portable",
-        "zip"
+        { "target": "portable", "arch": "x64" },
+        { "target": "zip", "arch":
       ]
     }
   },

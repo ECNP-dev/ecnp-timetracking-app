@@ -1,5 +1,5 @@
 
-name: Build and Deploy ECNP Time Tracker
+name: Build and Deploy ECNP Time Tracker (main)
 
 on:
   push:

@@ -25,22 +25,12 @@
 
   "win": {
     "target": [
-      {
-        "target": "portable",
-        "arch": "x64"
-      },
-      {
-        "target": "zip",
-        "arch": "x64"
-      }
+      { "target": "dir", "arch": "x64" },
+      { "target": "zip", "arch": "x64" }
     ],
     "sign": false,
     "signAndEditExecutable": false,
     "verifyUpdateCodeSignature": false
-  },
-
-  "portable": {
-    "useZip": false
   }
 },
   

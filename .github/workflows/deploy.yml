@@ -26,7 +26,11 @@ jobs:
 
       - name: Clear electron-builder cache
         run: |
-          rmdir /s /q "C:\Users\runneradmin\AppData\Local\electron-builder" || echo "no cache"
+          if (Test-Path "$env:LOCALAPPDATA\electron-builder") {
+            Remove-Item -Recurse -Force "$env:LOCALAPPDATA\electron-builder"
+          } else {
+            echo "no cache"
+          }
 
       - name: Build portable Electron version
         working-directory: electron-app

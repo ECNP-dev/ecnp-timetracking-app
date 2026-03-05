@@ -19,6 +19,7 @@
       "buildResources": "build"
     },
     "win": {
+      "sign": false,
       "target": [
         { "target": "portable", "arch": "x64" },
         { "target": "zip", "arch": "x64" }

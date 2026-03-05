@@ -1,3 +1,4 @@
+
 {
   "name": "ecnp-time-tracker",
   "version": "1.0.0",
@@ -7,7 +8,23 @@
     "react-start": "vite",
     "react-build": "vite build",
     "electron": "electron .",
-    "dev": "concurrently "npm run react-start" "wait-on http://localhost:3000 && npm run electron"",
+    "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run react-build && electron-builder"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^3.12.0",
+    "@azure/msal-react": "^2.0.17",
+    "xlsx": "^0.18.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.1.4",
+    "wait-on": "^7.2.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "electron-is-dev": "^3.3.0",
+    "concurrently": "^8.2.2"
   }
 }

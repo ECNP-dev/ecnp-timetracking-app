@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
+
   build-electron:
     runs-on: windows-latest
 
@@ -23,15 +24,20 @@ jobs:
         working-directory: electron-app
         run: npm install
 
-      - name: Build Electron Installer (Windows)
+      - name: Build portable Electron version
         working-directory: electron-app
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: npm run dist
 
-      - name: Upload Electron installer artifact
+      - name: Upload Portable Build
         uses: actions/upload-artifact@v4
         with:
-          name: ECNP-TimeTracker-Installer
-          path: electron-app/dist/*.exe
+          name: ECNP-TimeTracker-Portable
+          path: |
+            electron-app/dist/*.exe
+            electron-app/dist/*.zip
 
 
   deploy-functions:
@@ -47,24 +53,22 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install backend dependencies (Functions API)
+      - name: Install backend dependencies
         working-directory: functions-api
-        run: |
-          npm install --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Zip Function App package
         run: |
           cd functions-api
           zip -r ../functions.zip .
 
-      - name: Azure Login using Service Principal (from secret)
+      - name: Azure Login using Service Principal
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Function App
-        uses: azure/functions-action@v1
+        uses: Azure/functions-action@v1
         with:
           app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
           package: functions.zip
-``

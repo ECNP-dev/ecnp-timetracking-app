@@ -24,6 +24,10 @@ jobs:
         working-directory: electron-app
         run: npm install
 
+      - name: Clear electron-builder cache
+        run: |
+          rmdir /s /q "C:\Users\runneradmin\AppData\Local\electron-builder" || echo "no cache"
+
       - name: Build portable Electron version
         working-directory: electron-app
         run: npm run dist

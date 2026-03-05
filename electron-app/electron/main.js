@@ -8,31 +8,28 @@ function createWindow() {
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
-      nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      nodeIntegration: false
     }
   });
 
-  // Detect packaged mode: this replaces electron-is-dev
   const isDev = !app.isPackaged;
 
   if (isDev) {
-    // Vite dev server
+    // Dev mode: Vite dev server
     win.loadURL("http://localhost:3000");
-  } {
-    // Load the built Vite index.html (after packaging)
+  } else {
+    // Production mode: load built Vite bundle
     win.loadFile(path.join(__dirname, "../dist/index.html"));
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
+app.whenReady().then(createWindow);
 
-  app.on("activate", function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-app.on("window-all-closed", function () {
+app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });

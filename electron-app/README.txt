@@ -1,1 +1,0 @@
-This is the icon chunk. Full source files will arrive in the next ZIPs.

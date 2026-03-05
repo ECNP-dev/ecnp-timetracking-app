@@ -1,25 +1,11 @@
-const { app, BrowserWindow, protocol, Menu, Tray } = require("electron");
+
+const { app, BrowserWindow } = require("electron");
 const path = require("path");
-const isDev = process.env.NODE_ENV === "development";
-
-let win;
-let tray;
-let deepLinkUrl = null;
-
-app.setAsDefaultProtocolClient("msal");
-
-app.on("open-url", (event, url) => {
-  event.preventDefault();
-  deepLinkUrl = url;
-  if (win) win.webContents.send("msal:redirect", url);
-});
 
 function createWindow() {
-  win = new BrowserWindow({
-    width: 360,
-    height: 620,
-    alwaysOnTop: true,
-    resizable: true,
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
@@ -27,34 +13,26 @@ function createWindow() {
     }
   });
 
-  const url = isDev ? "http://localhost:3000" : `file://${path.join(__dirname, "../dist/index.html")}`;
-  win.loadURL(url);
+  // Detect packaged mode: this replaces electron-is-dev
+  const isDev = !app.isPackaged;
 
-  if (deepLinkUrl) {
-    win.webContents.once("did-finish-load", () => {
-      win.webContents.send("msal:redirect", deepLinkUrl);
-    });
+  if (isDev) {
+    // Vite dev server
+    win.loadURL("http://localhost:3000");
+  } {
+    // Load the built Vite index.html (after packaging)
+    win.loadFile(path.join(__dirname, "../dist/index.html"));
   }
-}
-
-function createTray() {
-  tray = new Tray(path.join(__dirname, "icon.png"));
-  tray.setToolTip("ECNP Time Tracker");
-
-  const menu = Menu.buildFromTemplate([
-    { label: "Show", click: () => win.show() },
-    { label: "Hide", click: () => win.hide() },
-    { type: "separator" },
-    { label: "Start Tracking", click: () => win.webContents.send("tray:start") },
-    { label: "Stop Tracking", click: () => win.webContents.send("tray:stop") },
-    { type: "separator" },
-    { label: "Quit", click: () => app.quit() }
-  ]);
-
-  tray.setContextMenu(menu);
 }
 
 app.whenReady().then(() => {
   createWindow();
-  createTray();
+
+  app.on("activate", function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
 });

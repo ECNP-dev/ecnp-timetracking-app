@@ -11,6 +11,13 @@ jobs:
     runs-on: windows-latest
 
     steps:
+    
+      - name: Show workflow identity
+        run: |
+          echo "Workflow file: $GITHUB_WORKFLOW"
+          echo "Ref: $GITHUB_REF"
+          echo "SHA: $GITHUB_SHA"
+
       - name: Checkout repository
         uses: actions/checkout@v4
 

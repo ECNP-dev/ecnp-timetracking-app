@@ -11,28 +11,36 @@
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run react-build && electron-builder"
   },
-  "build": {
-    "appId": "org.ecnp.timetracker",
-    "productName": "ECNP Time Tracker",
-    "directories": {
-      "output": "dist/portable-build",
-      "buildResources": "build"
-    },
-    "win": {
-      "sign": false,
-      "verifyUpdateCodeSignature": false,
-      "target": [
-        {
-          "target": "portable",
-          "arch": "x64"
-        },
-        {
-          "target": "zip",
-          "arch": "x64"
-        }
-      ]
-    }
+
+"build": {
+  "appId": "org.ecnp.timetracker",
+  "productName": "ECNP Time Tracker",
+
+  "directories": {
+    "output": "dist/portable-build",
+    "buildResources": "build"
   },
+
+  "win": {
+    "sign": false,
+    "signAndEditExecutable": false,
+    "verifyUpdateCodeSignature": false,
+    "publisherName": null,
+    "certificateFile": null,
+    "certificateSubjectName": null,
+    "certificateSha1": null,
+    "rfc3161TimeStampServer": null,
+    "target": [
+      { "target": "portable", "arch": "x64" },
+      { "target": "zip", "arch": "x64" }
+    ]
+  },
+
+  "portable": {
+    "useZip": false
+  }
+},
+  
   "dependencies": {
     "@azure/msal-browser": "^3.12.0",
     "@azure/msal-react": "^2.0.17",

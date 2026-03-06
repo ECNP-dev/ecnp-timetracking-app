@@ -29,10 +29,10 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run react-build
 
-      - name: Build portable directory app
+      - name: Build portable app (DIR target, ASAR disabled)
         run: npm run dist
 
-      - name: Upload portable directory
+      - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
           name: ECNP-TimeTracker-Portable

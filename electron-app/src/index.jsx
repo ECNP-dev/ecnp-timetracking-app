@@ -6,57 +6,52 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-// MSAL imports
 import { msalInstance, loginRequest } from "./msalConfig";
 import { InteractionRequiredAuthError } from "@azure/msal-browser";
 
-// Your app
 import App from "./App.jsx";
 
-// --------------------------------------------------
-// MSAL LOGIN/TOKEN BOOTSTRAP (must run BEFORE render)
-// --------------------------------------------------
-
+// MSAL bootstrap (must run BEFORE rendering)
 async function bootstrapAuth() {
 
-  // 1) Handle redirect result FIRST
+  // MSAL v3+ requires initialization before anything else
+  await msalInstance.initialize().catch((err) => {
+    console.error("MSAL initialization failed:", err);
+  });
+
+  // 1) Process redirect result
   const redirectResult = await msalInstance.handleRedirectPromise().catch((err) => {
     console.warn("handleRedirectPromise error:", err);
     return null;
   });
 
-  // If loginRedirect returned an account, set it now
   if (redirectResult?.account) {
     msalInstance.setActiveAccount(redirectResult.account);
   }
 
-  // 2) Try to get an existing signed‑in account
+  // 2) Try to get active or cached account
   let account =
     msalInstance.getActiveAccount() ||
     msalInstance.getAllAccounts()[0];
 
-  // If no cached account → start login
   if (!account) {
     console.log("No active account — starting loginRedirect()");
     await msalInstance.loginRedirect(loginRequest);
-    return; // App will restart after redirect
+    return;
   }
 
-  // 3) Try silent token
+  // 3) Acquire token silently
   try {
     const tokenResponse = await msalInstance.acquireTokenSilent({
       ...loginRequest,
       account,
     });
 
-    console.log(
-      "Access token acquired:",
-      tokenResponse.accessToken.substring(0, 20),
-      "…"
-    );
+    console.log("Access token acquired:", tokenResponse.accessToken.substring(0, 25), "…");
+
   } catch (err) {
     if (err instanceof InteractionRequiredAuthError) {
-      console.log("Silent token failed → triggering interactive login...");
+      console.log("Silent token failed → triggering interactive login");
       await msalInstance.acquireTokenRedirect(loginRequest);
       return;
     }
@@ -64,9 +59,8 @@ async function bootstrapAuth() {
   }
 }
 
-// Start MSAL before rendering
-bootstrapAuth().then(() => {
-  // Render your app AFTER MSAL login process is complete
+// Run authentication bootstrap, then render UI
+bootstrapAuth().finally(() => {
   ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
       <App />

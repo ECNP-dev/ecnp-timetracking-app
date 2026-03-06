@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "private": true,
   "main": "electron/main.js",
+
   "scripts": {
     "react-start": "vite",
     "react-build": "vite build",
@@ -11,22 +12,27 @@
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run react-build && electron-builder"
   },
+
   "build": {
     "appId": "org.ecnp.timetracker",
-    // Ship the electron folder (including assets) and the built UI
+
+    "directories": {
+      "buildResources": "electron/assets"
+    },
+
     "files": [
       "electron/**/*",
       "dist/**/*",
       "package.json"
     ],
-    // Make sure the assets are accessible at runtime (in app.asar or unpacked)
+
     "extraResources": [
       {
         "from": "electron/assets",
         "to": "assets"
       }
     ],
-    // Windows app icon (installer + taskbar)
+
     "win": {
       "icon": "electron/assets/app-icon.ico",
       "target": [
@@ -36,19 +42,19 @@
       "sign": false,
       "verifyUpdateCodeSignature": false
     },
-    // Linux app icon (PNG). You can also point to a 512px PNG.
+
     "linux": {
       "icon": "electron/assets/app-icon-256.png",
       "category": "Utility"
     }
-    // If you later build macOS, add:
-    // "mac": { "icon": "electron/assets/app-icon.icns", "category": "public.app-category.productivity" }
   },
+
   "dependencies": {
     "xlsx": "^0.18.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
+
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.1.4",
@@ -58,4 +64,3 @@
     "concurrently": "^8.2.2"
   }
 }
-``

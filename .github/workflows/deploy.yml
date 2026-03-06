@@ -15,7 +15,7 @@ jobs:
         working-directory: electron-app
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -26,13 +26,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build renderer (Vite)
+      - name: Build renderer
         run: npm run react-build
 
-      - name: Build raw portable app
+      - name: Build raw portable app (win-unpacked)
         run: npm run dist
 
-      - name: Upload win-unpacked portable app
+      - name: Upload win-unpacked folder
         uses: actions/upload-artifact@v4
         with:
           name: ECNP-TimeTracker-win-unpacked

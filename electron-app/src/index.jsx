@@ -1,31 +1,37 @@
 
-// src/index.jsx — FIXED FINAL VERSION
+// src/index.jsx — FINAL FIX
 import React from "react";
 import ReactDOM from "react-dom/client";
 
 import App from "./App.jsx";
 import { msalInstance, loginRequest } from "./msalConfig";
 
-async function start() {
-
-  // 1) ALWAYS initialize MSAL fully first
+async function initializeAuth() {
+  // 1) Initialize MSAL BEFORE anything else
   await msalInstance.initialize();
 
-  // 2) Handle redirect if one occurred
-  const redirectUrl = window.electronMSAL.getRedirectUri?.();
-  if (redirectUrl) {
-    console.log("Handling redirect:", redirectUrl);
-    await msalInstance.handleRedirectPromise(redirectUrl);
+  // 2) Handle redirect from OS (msal://redirect)
+  const redirectUri = window.electronMSAL?.getRedirectUri?.();
+  if (redirectUri) {
+    console.log("Handling redirect:", redirectUri);
+    await msalInstance.handleRedirectPromise(redirectUri);
   }
 
-  // 3) Only AFTER MSAL initializes + redirect resolves, render UI
-  ReactDOM.createRoot(document.getElementById("root")).render(
-    <React.StrictMode>
-      <App msalInstance={msalInstance} loginRequest={loginRequest} />
-    </React.StrictMode>
-  );
+  // 3) Restore cached account
+  const account =
+    msalInstance.getActiveAccount() ||
+    msalInstance.getAllAccounts()[0];
+
+  if (account) {
+    msalInstance.setActiveAccount(account);
+  }
 }
 
-// Guaranteed MSAL-first bootstrap
-start();
-``
+// Run initialization, then render UI
+initializeAuth().finally(() => {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+});

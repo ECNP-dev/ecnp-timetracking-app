@@ -3,34 +3,43 @@
   "name": "ecnp-time-tracker",
   "version": "1.0.0",
   "private": true,
+  "description": "ECNP time tracking desktop application",
+  "author": "ECNP",
+
   "main": "electron/main.js",
 
   "scripts": {
     "react-start": "vite",
     "react-build": "vite build",
+
     "electron": "electron .",
+
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
+
     "dist": "npm run react-build && electron-builder"
   },
 
   "build": {
     "appId": "org.ecnp.timetracker",
 
-    "directories": {
-      "buildResources": "electron/assets"
-    },
+    "productName": "ECNP Time Tracker",
 
-    "win": {
-      "icon": "electron/assets/app-icon.ico",
-      "target": [
-        { "target": "dir", "arch": "x64" },
-        { "target": "zip", "arch": "x64" }
-      ]
+    "directories": {
+      "buildResources": "electron/assets",
+      "output": "dist"
     },
 
     "files": [
-      "electron/**/*",
-      "dist/**/*",
+      {
+        "from": "electron",
+        "to": "electron",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "dist",
+        "to": "dist",
+        "filter": ["**/*"]
+      },
       "package.json"
     ],
 
@@ -43,10 +52,16 @@
 
     "win": {
       "icon": "electron/assets/app-icon.ico",
+
       "target": [
-        { "target": "dir", "arch": "x64" },
-        { "target": "zip", "arch": "x64" }
+        "portable",
+        "zip",
+        "dir"
       ]
+    },
+
+    "portable": {
+      "artifactName": "ECNP-TimeTracker-Portable.exe"
     },
 
     "linux": {

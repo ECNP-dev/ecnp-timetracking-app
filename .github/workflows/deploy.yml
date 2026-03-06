@@ -32,6 +32,18 @@ jobs:
             echo "no cache"
           }
 
+      - name: Show Vite inputs (CI proof)
+        working-directory: electron-app
+        shell: pwsh
+        run: |
+          Write-Host "PWD:"; Get-Location
+          Write-Host "`n-- electron-app root listing --"
+          Get-ChildItem -Force
+          Write-Host "`n-- index.html (first 30 lines) --"
+          Get-Content -TotalCount 30 .\index.html
+          Write-Host "`n-- src listing --"
+          Get-ChildItem .\src
+
       - name: Build portable Electron version
         working-directory: electron-app
         run: npm run dist

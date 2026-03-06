@@ -50,11 +50,6 @@
     "win": {
       "target": "dir",
       "icon": "electron/assets/app-icon.ico"
-    },
-
-    "linux": {
-      "icon": "electron/assets/app-icon-256.png",
-      "category": "Utility"
     }
   },
 

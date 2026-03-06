@@ -5,9 +5,7 @@
   "private": true,
   "description": "ECNP time tracking desktop application",
   "author": "ECNP",
-
   "main": "electron/main.js",
-
   "scripts": {
     "react-start": "vite",
     "react-build": "vite build",
@@ -15,37 +13,36 @@
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run react-build && electron-builder --win portable zip dir"
   },
-
   "build": {
     "appId": "org.ecnp.timetracker",
     "productName": "ECNP Time Tracker",
-
     "directories": {
       "output": "dist",
       "buildResources": "electron/assets"
     },
-
     "files": [
       {
         "from": "electron",
         "to": "electron",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "dist",
         "to": "dist",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       "package.json"
     ],
-
     "extraResources": [
       {
         "from": "electron/assets",
         "to": "assets"
       }
     ],
-
     "win": {
       "icon": "electron/assets/app-icon.ico",
       "target": [
@@ -54,24 +51,20 @@
         "dir"
       ]
     },
-
     "portable": {
       "artifactName": "ECNP-TimeTracker-Portable-${version}.exe",
       "requestExecutionLevel": "user"
     },
-
     "linux": {
       "icon": "electron/assets/app-icon-256.png",
       "category": "Utility"
     }
   },
-
   "dependencies": {
     "xlsx": "^0.18.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
-
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.1.4",
@@ -81,4 +74,3 @@
     "concurrently": "^8.2.2"
   }
 }
-``

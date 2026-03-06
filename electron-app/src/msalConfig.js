@@ -4,8 +4,8 @@ import { apiConfig } from "./apiConfig";
 export const msalConfig = {
   auth: {
     clientId: "b97f4127-1505-4284-a090-6b7472238836",
-    authority: "https://login.microsoftonline.com/common",
-    redirectUri: "msal://auth",
+    authority: "https://login.microsoftonline.com/9775b719-dd5e-451f-9c07-6f54b3094605",
+    redirectUri: "msal://redirect",
     navigateToLoginRequestUrl: false,
   },
   cache: {

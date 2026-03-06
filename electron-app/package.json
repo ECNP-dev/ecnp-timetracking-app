@@ -11,32 +11,40 @@
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run react-build && electron-builder"
   },
-
-"build": {
-  "appId": "org.ecnp.timetracker",
-  "productName": "ECNP Time Tracker",
-
-  "directories": {
-    "output": "dist/portable-build",
-    "buildResources": "build"
-  },
-
-  "asar": false,
-
-  "win": {
-    "target": [
-      { "target": "dir", "arch": "x64" },
-      { "target": "zip", "arch": "x64" }
+  "build": {
+    "appId": "org.ecnp.timetracker",
+    // Ship the electron folder (including assets) and the built UI
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
     ],
-    "sign": false,
-    "signAndEditExecutable": false,
-    "verifyUpdateCodeSignature": false
-  }
-},
-  
+    // Make sure the assets are accessible at runtime (in app.asar or unpacked)
+    "extraResources": [
+      {
+        "from": "electron/assets",
+        "to": "assets"
+      }
+    ],
+    // Windows app icon (installer + taskbar)
+    "win": {
+      "icon": "electron/assets/app-icon.ico",
+      "target": [
+        { "target": "dir", "arch": "x64" },
+        { "target": "zip", "arch": "x64" }
+      ],
+      "sign": false,
+      "verifyUpdateCodeSignature": false
+    },
+    // Linux app icon (PNG). You can also point to a 512px PNG.
+    "linux": {
+      "icon": "electron/assets/app-icon-256.png",
+      "category": "Utility"
+    }
+    // If you later build macOS, add:
+    // "mac": { "icon": "electron/assets/app-icon.icns", "category": "public.app-category.productivity" }
+  },
   "dependencies": {
-    "@azure/msal-browser": "^3.12.0",
-    "@azure/msal-react": "^2.0.17",
     "xlsx": "^0.18.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
@@ -50,3 +58,4 @@
     "concurrently": "^8.2.2"
   }
 }
+``

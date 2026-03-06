@@ -48,10 +48,8 @@
     ],
 
     "win": {
-      "icon": "electron/assets/app-icon.ico",
-      "target": [
-        "dir"
-      ]
+      "target": "dir",
+      "icon": "electron/assets/app-icon.ico"
     },
 
     "linux": {

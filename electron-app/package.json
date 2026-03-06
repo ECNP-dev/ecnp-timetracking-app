@@ -11,22 +11,18 @@
   "scripts": {
     "react-start": "vite",
     "react-build": "vite build",
-
     "electron": "electron .",
-
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
-
-    "dist": "npm run react-build && electron-builder"
+    "dist": "npm run react-build && electron-builder --win portable zip dir"
   },
 
   "build": {
     "appId": "org.ecnp.timetracker",
-
     "productName": "ECNP Time Tracker",
 
     "directories": {
-      "buildResources": "electron/assets",
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "electron/assets"
     },
 
     "files": [
@@ -52,7 +48,6 @@
 
     "win": {
       "icon": "electron/assets/app-icon.ico",
-
       "target": [
         "portable",
         "zip",
@@ -61,7 +56,8 @@
     },
 
     "portable": {
-      "artifactName": "ECNP-TimeTracker-Portable.exe"
+      "artifactName": "ECNP-TimeTracker-Portable-${version}.exe",
+      "requestExecutionLevel": "user"
     },
 
     "linux": {
@@ -85,3 +81,4 @@
     "concurrently": "^8.2.2"
   }
 }
+``

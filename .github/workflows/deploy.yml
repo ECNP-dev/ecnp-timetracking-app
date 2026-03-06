@@ -10,6 +10,10 @@ jobs:
   build:
     runs-on: windows-latest
 
+    defaults:
+      run:
+        working-directory: electron-app
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,39 +24,35 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        working-directory: electron-app
-        run: |
-          npm install
+        run: npm install
 
       - name: Build renderer (Vite)
-        working-directory: electron-app
-        run: |
-          npm run react-build
+        run: npm run react-build
 
-      - name: Build Electron (portable + zip + dir)
-        working-directory: electron-app
-        run: |
-          npm run dist
+      - name: Build Electron App (portable + zip + dir)
+        run: npm run dist
 
-      # -----------------------------
-      # UPLOAD CORRECT PORTABLE OUTPUT
-      # -----------------------------
-      - name: Upload Portable ZIP
-        uses: actions/upload-artifact@v3
+      #
+      # --- ARTIFACT UPLOADS (Using the NEW GitHub Actions v4) ---
+      #
+      
+      - name: Upload portable ZIP
+        uses: actions/upload-artifact@v4
         with:
-          name: ECNP-TimeTracker-Portable-Zip
-          path: |
-            electron-app/dist/*.zip
+          name: portable-zip
+          path: electron-app/dist/*.zip
+          if-no-files-found: error
 
-      - name: Upload win-unpacked
-        uses: actions/upload-artifact@v3
+      - name: Upload win-unpacked folder
+        uses: actions/upload-artifact@v4
         with:
-          name: ECNP-TimeTracker-win-unpacked
-          path: |
-            electron-app/dist/win-unpacked/**
+          name: win-unpacked
+          path: electron-app/dist/win-unpacked/**
+          if-no-files-found: error
 
       - name: Upload builder-debug.yml
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: builder-debug
           path: electron-app/dist/builder-debug.yml
+          if-no-files-found: error

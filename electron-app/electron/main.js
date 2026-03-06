@@ -1,15 +1,15 @@
 
-// electron/main.js — FINAL MERGED VERSION
+// electron/main.js — FULL UPDATED VERSION
 // Includes:
-// - Portable OneDrive logs detection
-// - Logs override support
-// - Single-instance + msal:// deep-link routing
-// - MSAL redirect forwarding to renderer
+// - Universal OneDrive detection (shared ECNP logs folder)
+// - User-specific daily logs (avoid overwrite)
+// - MSAL redirect protocol forwarding
+// - Single-instance lock (Electron best practice)
+// - Logs override
 // - Tasks IPC
-// - Daily logs IPC
-// - Monthly report IPC
+// - Daily log IPC
+// - Monthly Excel reports IPC
 // - Settings IPC
-// - Correct use of effectiveLogsDir() throughout
 
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
@@ -18,61 +18,59 @@ const fsp = fs.promises;
 const XLSX = require("xlsx");
 
 /* -------------------------------------------------------------------------- */
-/*        1. PORTABLE ONEDRIVE LOGS DIRECTORY (AUTO-DETECT + OVERRIDE)       */
+/*                 1. UNIVERSAL ONEDRIVE SHARED FOLDER DETECTION              */
 /* -------------------------------------------------------------------------- */
 
-function findOneDriveBusinessFolder() {
+// Locate ANY OneDrive* folder under %USERPROFILE%,
+// then locate the "Office - Documents" subtree (ECNP Shared Library)
+function findECNPLogsFolder() {
   const root = process.env.USERPROFILE;
   if (!root) return null;
 
-  // Identify OneDrive or OneDrive - <Tenant> folders
-  const entries = fs.readdirSync(root, { withFileTypes: true });
-  const candidates = entries
-    .filter((e) => e.isDirectory() && e.name.startsWith("OneDrive"))
-    .map((e) => path.join(root, e.name));
+  const entries = fs.readdirSync(root, { withFileTypes: true })
+    .filter(e => e.isDirectory() && e.name.startsWith("OneDrive"))
+    .map(e => path.join(root, e.name));
 
-  if (candidates.length === 0) return null;
-
-  // Prefer ECNP tenant folder (common OneDrive business pattern)
-  const preferred = candidates.find((c) =>
-    /ecnp|stichting/i.test(path.basename(c))
-  );
-
-  return preferred || candidates[0];
+  for (const oneDriveRoot of entries) {
+    const officeDocs = path.join(oneDriveRoot, "Office - Documents");
+    if (fs.existsSync(officeDocs)) {
+      return path.join(
+        officeDocs,
+        "General",
+        "ICT",
+        "Timetracking",
+        "ecnp-time-tracking-app",
+        "logs"
+      );
+    }
+  }
+  return null;
 }
 
-const oneDriveBase = findOneDriveBusinessFolder();
-if (!oneDriveBase) {
-  throw new Error("No OneDrive folder was found for this Windows user.");
+// Use universal detection:
+const autoLogs = findECNPLogsFolder();
+if (!autoLogs) {
+  throw new Error("ECNP shared OneDrive folder ('Office - Documents') not found on this PC.");
 }
 
-// Default logs directory inside OneDrive
-let LOGS_DIR = path.join(
-  oneDriveBase,
-  "Office - Documents",
-  "General",
-  "ICT",
-  "Timetracking",
-  "ecnp-time-tracking-app",
-  "logs"
-);
+// Default logs directory
+let LOGS_DIR = autoLogs;
 
-// Runtime override (admin-only)
+// Allow admin runtime override
 global._LOGS_DIR_OVERRIDE = null;
 function effectiveLogsDir() {
   return global._LOGS_DIR_OVERRIDE || LOGS_DIR;
 }
 
 function ensureDirSync(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
+
 ensureDirSync(effectiveLogsDir());
 
 
 /* -------------------------------------------------------------------------- */
-/*                  2. SINGLE INSTANCE + MSAL PROTOCOL HANDLING              */
+/*                 2. SINGLE INSTANCE + MSAL PROTOCOL FORWARDING              */
 /* -------------------------------------------------------------------------- */
 
 let mainWindow = null;
@@ -85,7 +83,7 @@ if (!gotLock) {
 }
 
 app.on("second-instance", (_event, argv) => {
-  const uri = argv.find((a) => a && a.startsWith("msal://"));
+  const uri = argv.find(a => a && a.startsWith("msal://"));
   if (uri) {
     pendingRedirectUri = uri;
     if (mainWindow) {
@@ -99,23 +97,22 @@ app.on("second-instance", (_event, argv) => {
   }
 });
 
+// macOS open-url
 app.on("open-url", (event, url) => {
   event.preventDefault();
   pendingRedirectUri = url;
-  if (mainWindow) {
-    mainWindow.webContents.send("msal-redirect", url);
-  }
+  if (mainWindow) mainWindow.webContents.send("msal-redirect", url);
 });
 
-// Windows deep-link on launch
+// Windows: deep link may appear on launch args
 if (process.platform === "win32") {
-  const uri = process.argv.find((a) => a && a.startsWith("msal://"));
-  if (uri) pendingRedirectUri = uri;
+  const arg = process.argv.find(a => a && a.startsWith("msal://"));
+  if (arg) pendingRedirectUri = arg;
 }
 
 
 /* -------------------------------------------------------------------------- */
-/*                              3. CREATE WINDOW                              */
+/*                               3. CREATE WINDOW                             */
 /* -------------------------------------------------------------------------- */
 
 function createWindow() {
@@ -125,16 +122,13 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
-      nodeIntegration: false,
-    },
+      nodeIntegration: false
+    }
   });
 
   const dev = !app.isPackaged;
-  if (dev) {
-    mainWindow.loadURL("http://localhost:3000");
-  } else {
-    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
-  }
+  if (dev) mainWindow.loadURL("http://localhost:3000");
+  else mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
 
   ipcMain.on("renderer-ready", () => {
     if (pendingRedirectUri) {
@@ -145,14 +139,13 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Runtime protocol registration (needed for portable Windows apps)
   app.setAsDefaultProtocolClient("msal");
   createWindow();
 });
 
 
 /* -------------------------------------------------------------------------- */
-/*                              4. LOAD/SAVE TASKS                            */
+/*                            4. LOAD & SAVE TASKS                            */
 /* -------------------------------------------------------------------------- */
 
 function tasksFile() {
@@ -162,8 +155,8 @@ function tasksFile() {
 async function loadTasks() {
   try {
     const txt = await fsp.readFile(tasksFile(), "utf8");
-    const parsed = JSON.parse(txt);
-    return Array.isArray(parsed) ? parsed : parsed.tasks || [];
+    const data = JSON.parse(txt);
+    return Array.isArray(data) ? data : data.tasks || [];
   } catch {
     return ["Focus work", "Meetings", "Support", "Admin"];
   }
@@ -176,13 +169,11 @@ async function saveTasks(requester, tasks) {
 }
 
 ipcMain.handle("tasks:load", () => loadTasks());
-ipcMain.handle("tasks:save", (_e, { requester, tasks }) =>
-  saveTasks(requester, tasks)
-);
+ipcMain.handle("tasks:save", (_e, data) => saveTasks(data.requester, data.tasks));
 
 
 /* -------------------------------------------------------------------------- */
-/*                           5. DAILY LOGS: CSV WRITE                         */
+/*                       5. DAILY LOGS — USER-SPECIFIC FILES                 */
 /* -------------------------------------------------------------------------- */
 
 function csvEscape(v) {
@@ -199,19 +190,27 @@ async function appendDailyLogs({ dateISO, user, entries }) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
 
-  const file = path.join(effectiveLogsDir(), `${yyyy}-${mm}-${dd}.csv`);
+  // SAFE USERNAME (avoid invalid filename chars)
+  const safeUser = user.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  // Final filename per user
+  const file = path.join(
+    effectiveLogsDir(),
+    `${yyyy}-${mm}-${dd}__${safeUser}.csv`
+  );
+
   const header = "date,user,task,minutes\r\n";
 
   if (!fs.existsSync(file)) {
+    ensureDirSync(effectiveLogsDir());
     await fsp.writeFile(file, header, "utf8");
   }
 
   const lines = entries
-    .map(
-      (e) =>
-        `${csvEscape(dateISO)},${csvEscape(user)},${csvEscape(
-          e.task
-        )},${csvEscape(e.minutes)}\r\n`
+    .map(e =>
+      `${csvEscape(dateISO)},${csvEscape(user)},${csvEscape(e.task)},${csvEscape(
+        e.minutes
+      )}\r\n`
     )
     .join("");
 
@@ -223,38 +222,39 @@ ipcMain.handle("logs:appendDaily", (_e, payload) => appendDailyLogs(payload));
 
 
 /* -------------------------------------------------------------------------- */
-/*                           6. MONTHLY REPORT (XLSX)                         */
+/*                         6. MONTHLY REPORT (XLSX)                           */
 /* -------------------------------------------------------------------------- */
 
 function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/);
-  const header = lines[0].split(",");
-  return lines.slice(1).map((line) => {
-    const parts = [];
-    let cur = "",
-      q = false;
+  const [headerLine, ...rows] = text.trim().split(/\r?\n/);
+  const headers = headerLine.split(",");
 
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (q) {
-        if (ch === '"' && line[i + 1] === '"') {
+  return rows.map(row => {
+    const out = [];
+    let cur = "";
+    let inQ = false;
+
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (inQ) {
+        if (c === '"' && row[i + 1] === '"') {
           cur += '"';
           i++;
-        } else if (ch === '"') {
-          q = false;
-        } else cur += ch;
+        } else if (c === '"') {
+          inQ = false;
+        } else cur += c;
       } else {
-        if (ch === '"') q = true;
-        else if (ch === ",") {
-          parts.push(cur);
+        if (c === '"') inQ = true;
+        else if (c === ",") {
+          out.push(cur);
           cur = "";
-        } else cur += ch;
+        } else cur += c;
       }
     }
-    parts.push(cur);
+    out.push(cur);
 
     const obj = {};
-    header.forEach((h, i) => (obj[h] = parts[i]));
+    headers.forEach((h, i) => (obj[h] = out[i]));
     obj.minutes = Number(obj.minutes || 0);
     return obj;
   });
@@ -267,7 +267,7 @@ async function generateMonthlyReport({ year, month }) {
 
   const files = await fsp.readdir(dir);
   const monthFiles = files.filter(
-    (f) => f.startsWith(`${yyyy}-${mm}-`) && f.endsWith(".csv")
+    f => f.startsWith(`${yyyy}-${mm}-`) && f.endsWith(".csv")
   );
 
   let rows = [];
@@ -276,25 +276,26 @@ async function generateMonthlyReport({ year, month }) {
     rows.push(...parseCSV(txt));
   }
 
-  const daysInMonth = new Date(yyyy, Number(mm), 0).getDate();
-  const tasksSet = new Set(rows.map((r) => r.task));
+  // Aggregate
+  const days = new Date(yyyy, Number(mm), 0).getDate();
+  const tasksSet = new Set(rows.map(r => r.task));
   const taskList = Array.from(tasksSet).sort();
 
   const byTaskDay = {};
-  rows.forEach((r) => {
+  rows.forEach(r => {
     const day = Number(r.date.split("-")[2]);
     byTaskDay[r.task] ??= {};
     byTaskDay[r.task][day] = (byTaskDay[r.task][day] || 0) + r.minutes;
   });
 
   const totalsSheet = [
-    ["Task", ...Array.from({ length: daysInMonth }, (_, i) => i + 1), "Total (mins)"],
+    ["Task", ...Array.from({ length: days }, (_, i) => i + 1), "Total (mins)"]
   ];
 
-  taskList.forEach((task) => {
+  taskList.forEach(task => {
     let total = 0;
     const row = [task];
-    for (let d = 1; d <= daysInMonth; d++) {
+    for (let d = 1; d <= days; d++) {
       const v = byTaskDay[task]?.[d] || 0;
       total += v;
       row.push(v);
@@ -303,22 +304,24 @@ async function generateMonthlyReport({ year, month }) {
     totalsSheet.push(row);
   });
 
-  const users = Array.from(new Set(rows.map((r) => r.user))).sort();
+  // User breakdown
+  const users = Array.from(new Set(rows.map(r => r.user))).sort();
   const byTaskUser = {};
-  rows.forEach((r) => {
+
+  rows.forEach(r => {
     byTaskUser[r.task] ??= {};
     byTaskUser[r.task][r.user] =
       (byTaskUser[r.task][r.user] || 0) + r.minutes;
   });
 
   const byUserSheet = [
-    ["Task", ...users, "Total (mins)"],
+    ["Task", ...users, "Total (mins)"]
   ];
 
-  taskList.forEach((task) => {
+  taskList.forEach(task => {
     let total = 0;
     const row = [task];
-    users.forEach((u) => {
+    users.forEach(u => {
       const v = byTaskUser[task]?.[u] || 0;
       total += v;
       row.push(v);
@@ -328,29 +331,22 @@ async function generateMonthlyReport({ year, month }) {
   });
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.aoa_to_sheet(totalsSheet),
-    "Monthly Totals"
-  );
-  XLSX.utils.book_append_sheet(
-    wb,
-    XLSX.utils.aoa_to_sheet(byUserSheet),
-    "By User"
-  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(totalsSheet), "Monthly Totals");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(byUserSheet), "By User");
 
   const outFile = path.join(dir, `ECNP-Report-${yyyy}-${mm}.xlsx`);
   XLSX.writeFile(wb, outFile);
+
   return outFile;
 }
 
-ipcMain.handle("reports:generateMonthly", (_e, payload) =>
-  generateMonthlyReport(payload)
+ipcMain.handle("reports:generateMonthly", (_e, data) =>
+  generateMonthlyReport(data)
 );
 
 
 /* -------------------------------------------------------------------------- */
-/*                               7. SETTINGS IPC                              */
+/*                                7. SETTINGS IPC                              */
 /* -------------------------------------------------------------------------- */
 
 ipcMain.handle("settings:getLogsDir", () => effectiveLogsDir());
@@ -367,13 +363,11 @@ ipcMain.handle("settings:writeTestLog", async () => {
 });
 
 ipcMain.handle("settings:overrideLogsDir", async (_e, { requester, newPath }) => {
-  if (requester !== "admin") {
-    throw new Error("Only admin can override logs directory.");
-  }
+  if (requester !== "admin") throw new Error("Only admin can override logs directory.");
   if (!newPath) throw new Error("Invalid path.");
 
   ensureDirSync(newPath);
-  global._LOGS_DIR_OVERRIDE = newPath; // Apply override immediately
+  global._LOGS_DIR_OVERRIDE = newPath;
+
   return true;
 });
-``

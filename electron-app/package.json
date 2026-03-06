@@ -23,7 +23,6 @@
     "win": {
       "icon": "electron/assets/app-icon.ico",
       "target": [
-        "portable",
         { "target": "dir", "arch": "x64" },
         { "target": "zip", "arch": "x64" }
       ]

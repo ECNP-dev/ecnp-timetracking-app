@@ -1,4 +1,86 @@
 
+// electron/main.js — FINAL WORKING VERSION
+
+const { app, BrowserWindow, ipcMain } = require("electron");
+const path = require("path");
+
+let mainWindow = null;
+let pendingRedirectUri = null;
+
+// IMPORTANT: Enforce single instance (fixes second-window problem)
+const gotLock = app.requestSingleInstanceLock();
+
+if (!gotLock) {
+  app.quit();
+  return;
+}
+
+app.on("second-instance", (event, argv) => {
+  // Windows: protocol URL arrives as arg
+  const url = argv.find(a => a.startsWith("msal://"));
+  if (url) {
+    pendingRedirectUri = url;
+    if (mainWindow) {
+      mainWindow.webContents.send("msal-redirect", url);
+    }
+  }
+
+  // Focus existing window
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+// macOS: open-url event
+app.on("open-url", (event, url) => {
+  event.preventDefault();
+  pendingRedirectUri = url;
+  if (mainWindow) {
+    mainWindow.webContents.send("msal-redirect", url);
+  }
+});
+
+// Windows: first launch with redirect URI
+if (process.platform === "win32") {
+  const url = process.argv.find(a => a.startsWith("msal://"));
+  if (url) {
+    pendingRedirectUri = url;
+  }
+}
+
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    }
+  });
+
+  const dev = !app.isPackaged;
+  if (dev) {
+    mainWindow.loadURL("http://localhost:3000");
+  } else {
+    mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
+  }
+
+  // When renderer is ready, send pending redirect if any
+  ipcMain.on("renderer-ready", () => {
+    if (pendingRedirectUri) {
+      mainWindow.webContents.send("msal-redirect", pendingRedirectUri);
+      pendingRedirectUri = null;
+    }
+  });
+}
+
+app.whenReady().then(() => {
+  app.setAsDefaultProtocolClient("msal");
+  createWindow();
+});
+
 // electron/main.js
 const { app, BrowserWindow } = require("electron");
 const path = require("path");

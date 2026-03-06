@@ -62,4 +62,3 @@ jobs:
           name: builder-debug
           path: electron-app/dist/builder-debug.yml
           if-no-files-found: error
-``

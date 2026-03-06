@@ -1,5 +1,5 @@
 
-name: build-electron
+name: build-ECNP-time-tracker
 
 on:
   push:
@@ -29,24 +29,30 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run react-build
 
-      - name: Build Electron App (portable + zip + dir)
+      - name: Build Electron (portable + zip + dir)
         run: npm run dist
 
-      #
-      # --- ARTIFACT UPLOADS (Using the NEW GitHub Actions v4) ---
-      #
-      
-      - name: Upload portable ZIP
+      # -----------------------------
+      # UPLOAD TRUE PORTABLE EXE
+      # -----------------------------
+      - name: Upload Portable EXE
         uses: actions/upload-artifact@v4
         with:
-          name: portable-zip
+          name: ECNP-TimeTracker-Portable
+          path: electron-app/dist/*.exe
+          if-no-files-found: error
+
+      - name: Upload ZIP Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ECNP-TimeTracker-Zip
           path: electron-app/dist/*.zip
           if-no-files-found: error
 
-      - name: Upload win-unpacked folder
+      - name: Upload win-unpacked Build
         uses: actions/upload-artifact@v4
         with:
-          name: win-unpacked
+          name: ECNP-TimeTracker-win-unpacked
           path: electron-app/dist/win-unpacked/**
           if-no-files-found: error
 
@@ -56,3 +62,4 @@ jobs:
           name: builder-debug
           path: electron-app/dist/builder-debug.yml
           if-no-files-found: error
+``

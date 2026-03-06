@@ -1,12 +1,8 @@
 
 // electron/preload.js
-const { contextBridge } = require("electron");
+const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("electronMSAL", {
-  getRedirectUri: () => {
-    if (global.getMsalRedirectUri) {
-      return global.getMsalRedirectUri();
-    }
-    return null;
-  }
+  onRedirect: (callback) => ipcRenderer.on("msal-redirect", (e, url) => callback(url)),
+  notifyReady: () => ipcRenderer.send("renderer-ready")
 });

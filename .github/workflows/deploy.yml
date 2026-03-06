@@ -29,12 +29,12 @@ jobs:
       - name: Build renderer (Vite)
         run: npm run react-build
 
-      - name: Build portable app (DIR target, ASAR disabled)
+      - name: Build raw portable app
         run: npm run dist
 
-      - name: Upload portable artifact
+      - name: Upload win-unpacked portable app
         uses: actions/upload-artifact@v4
         with:
-          name: ECNP-TimeTracker-Portable
+          name: ECNP-TimeTracker-win-unpacked
           path: electron-app/dist/win-unpacked/**
           if-no-files-found: error

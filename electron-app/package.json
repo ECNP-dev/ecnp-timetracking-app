@@ -16,6 +16,17 @@
   "appId": "org.ecnp.timetracker",
   "productName": "ECNP Time Tracker",
 
+  "files": [
+    "electron/**/*",
+    "dist/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "electron/assets",
+      "to": "assets"
+    }
+  ]
+
   "directories": {
     "output": "dist/portable-build",
     "buildResources": "build"

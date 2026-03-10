@@ -65,7 +65,7 @@ let tray = null;
 let isQuitting = false;
 
 // tray icons (these MUST exist at electron/assets/)
-const trayGray = path.join(__dirname, "assets", "icon-gray.png");
+const trayGray = path.join(__dirname, "assets", "icon-red.png");
 const trayGreen = path.join(__dirname, "assets", "icon-green.png");
 
 // We only start in tray mode if launched from Startup AND --tray flag exists

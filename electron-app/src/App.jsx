@@ -285,60 +285,177 @@ export default function App() {
 
   /* ----------------------- TRAY MINI-MODE ----------------------- */
   if (isTrayMode) {
-    return (
-      <div
-        style={{ padding: 16, fontFamily: "Segoe UI" }}
-        onMouseLeave={() => window.ecnpTimer?.trayHide?.()}
+    
+if (isTrayMode) {
+  const statusColor = isRunning ? "green" : isPaused ? "orange" : "gray";
+  const statusLabel = isRunning ? "RUNNING" : isPaused ? "PAUSED" : "STOPPED";
+
+  return (
+    <div
+      style={{
+        padding: 16,
+        fontFamily: "Segoe UI",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        width: "100%"
+      }}
+      onMouseLeave={() => window.ecnpTimer?.trayHide?.()}
+    >
+      {/* User display */}
+      <div style={{ fontSize: 12, opacity: 0.7 }}>
+        <b>User:</b> {storedUser}
+      </div>
+
+      {/* Task selector */}
+      <label style={{ fontSize: 13 }}>Task</label>
+      <select
+        value={selected[0] || ""}
+        onChange={(e) => setSelected([e.target.value])}
+        style={{
+          padding: "8px 12px",
+          borderRadius: 6,
+          border: "1px solid #ccc",
+          width: "100%"
+        }}
       >
-        <h3 style={{ marginTop: 0 }}>Quick Log</h3>
+        <option value="">Select task...</option>
+        {tasks.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </select>
 
-        <div style={{ fontSize: 13, marginBottom: 6 }}>
-          <b>User:</b> {storedUser}
+      {/* Status row */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 6
+        }}
+      >
+        <div style={{ fontSize: 18, fontWeight: 600 }}>
+          {Math.floor(elapsedMs / 60000)}m {Math.floor((elapsedMs / 1000) % 60)}s
         </div>
 
-        <label style={{ fontSize: 13, marginBottom: 4 }}>Tasks</label>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-          {tasks.map(t => {
-            const on = selected.includes(t);
-            return (
-              <button
-                key={t}
-                onClick={() => toggleSelected(t)}
-                style={{
-                  padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc",
-                  background: on ? "#0a66c2" : "white", color: on ? "white" : "#333", cursor: "pointer"
-                }}
-              >
-                {t}
-              </button>
-            );
-          })}
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: statusColor,
+            display: "flex",
+            alignItems: "center",
+            gap: 6
+          }}
+        >
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: statusColor
+            }}
+          ></span>
+          {statusLabel}
         </div>
+      </div>
 
-        <div style={{ marginBottom: 12, fontSize: 16 }}>
-          Elapsed: {Math.floor(elapsedMs/60000)}m {Math.floor((elapsedMs/1000)%60)}s
-        </div>
-
-        {isRunning && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button onClick={pauseTimer} style={{ padding: "10px", background: "#f0ad4e", color: "#fff", border: "none", borderRadius: 6, fontSize: 15 }}>Pause</button>
-            <button onClick={stopTimer}  style={{ padding: "10px", background: "red",     color: "white", border: "none", borderRadius: 6, fontSize: 15 }}>Stop</button>
-          </div>
-        )}
-        {!isRunning && isPaused && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button onClick={resumeTimer} style={{ padding: "10px", background: "green", color: "white", border: "none", borderRadius: 6, fontSize: 15 }}>Resume</button>
-            <button onClick={stopTimer}   style={{ padding: "10px", background: "red",   color: "white", border: "none", borderRadius: 6, fontSize: 15 }}>Stop</button>
-          </div>
-        )}
+      {/* Action buttons */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+          marginTop: 8
+        }}
+      >
+        {/* Start */}
         {!isRunning && !isPaused && (
-          <button onClick={startTimer} style={{ width: "100%", padding: "10px", background: "green", color: "white", border: "none", borderRadius: 6, fontSize: 15 }}>
+          <button
+            style={{
+              padding: "10px",
+              background: "green",
+              color: "white",
+              borderRadius: 6,
+              border: "none",
+              fontSize: 15,
+              gridColumn: "span 2"
+            }}
+            onClick={startTimer}
+          >
             Start
           </button>
         )}
+
+        {/* Pause + Stop */}
+        {isRunning && (
+          <>
+            <button
+              style={{
+                padding: "10px",
+                background: "orange",
+                color: "white",
+                borderRadius: 6,
+                border: "none",
+                fontSize: 15
+              }}
+              onClick={pauseTimer}
+            >
+              Pause
+            </button>
+            <button
+              style={{
+                padding: "10px",
+                background: "red",
+                color: "white",
+                borderRadius: 6,
+                border: "none",
+                fontSize: 15
+              }}
+              onClick={stopTimer}
+            >
+              Stop
+            </button>
+          </>
+        )}
+
+        {/* Resume + Stop */}
+        {!isRunning && isPaused && (
+          <>
+            <button
+              style={{
+                padding: "10px",
+                background: "green",
+                color: "white",
+                borderRadius: 6,
+                border: "none",
+                fontSize: 15
+              }}
+              onClick={resumeTimer}
+            >
+              Resume
+            </button>
+            <button
+              style={{
+                padding: "10px",
+                background: "red",
+                color: "white",
+                borderRadius: 6,
+                border: "none",
+                fontSize: 15
+              }}
+              onClick={stopTimer}
+            >
+              Stop
+            </button>
+          </>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   /* ----------------------- MAIN APP ----------------------- */
   return (

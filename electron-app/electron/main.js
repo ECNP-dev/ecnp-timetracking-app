@@ -1,15 +1,14 @@
 
-// electron/main.js — UPDATED
-// - Universal OneDrive detection
-// - Monthly subfolders for logs & reports
-// - Per-user daily CSVs (no overwrite)
-// - Single-instance
-// - Tray + mini-window (#/tray)
+// electron/main.js — UPDATED TO OPEN WINDOW BY DEFAULT
+// Includes:
+// - Universal OneDrive detection (shared ECNP logs folder)
+// - User-specific daily logs (with monthly subfolders)
+// - Tray system (tray icon, tray popup, tray window)
+// - Tray icon state updates (gray/green)
+// - Minimize-to-tray
 // - Global shortcut Ctrl+Alt+L
-// - Minimize-to-tray (close hides main)
-// - Tray icon (gray/green) based on timer state
-// - Settings IPC incl. launch-in-tray Startup shortcut
-// - Tasks / Daily logs / Monthly reports IPC
+// - Settings: override logs folder, run at startup
+// - Tasks, logs, monthly reports IPC
 
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut } = require("electron");
 const path = require("path");
@@ -42,18 +41,22 @@ function findECNPLogsFolder() {
 }
 
 const autoLogs = findECNPLogsFolder();
-if (!autoLogs) {
-  throw new Error("ECNP shared OneDrive folder ('Office - Documents') not found on this PC.");
-}
+if (!autoLogs) throw new Error("ECNP shared OneDrive folder ('Office - Documents') not found.");
 
 let LOGS_DIR = autoLogs;
 global._LOGS_DIR_OVERRIDE = null;
-function effectiveLogsDir() { return global._LOGS_DIR_OVERRIDE || LOGS_DIR; }
-function ensureDirSync(dir) { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }
+
+function effectiveLogsDir() {
+  return global._LOGS_DIR_OVERRIDE || LOGS_DIR;
+}
+
+function ensureDirSync(dir) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
 ensureDirSync(effectiveLogsDir());
 
 /* -------------------------------------------------------------------------- */
-/* 2. SINGLE INSTANCE + TRAY                                                  */
+/* 2. MAIN + TRAY WINDOWS                                                     */
 /* -------------------------------------------------------------------------- */
 
 let mainWindow = null;
@@ -61,14 +64,24 @@ let trayWindow = null;
 let tray = null;
 let isQuitting = false;
 
-// tray icons (put these PNGs in electron/assets/)
-const trayGray  = path.join(__dirname, "assets", "icon-gray.png");
+// tray icons (these MUST exist at electron/assets/)
+const trayGray = path.join(__dirname, "assets", "icon-gray.png");
 const trayGreen = path.join(__dirname, "assets", "icon-green.png");
 
+// We only start in tray mode if launched from Startup AND --tray flag exists
+// (prevents normal launches from accidentally opening in tray)
+const launchedInTray =
+  process.argv.includes("--tray") &&
+  process.env.RUN_FROM_STARTUP === "1";
+
 const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) { app.quit(); process.exit(0); }
+if (!gotLock) {
+  app.quit();
+  process.exit(0);
+}
 
 app.on("before-quit", () => { isQuitting = true; });
+
 app.on("second-instance", () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
@@ -78,12 +91,13 @@ app.on("second-instance", () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/* 3. MAIN & TRAY WINDOWS                                                     */
+/* MAIN WINDOW                                                                */
 /* -------------------------------------------------------------------------- */
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200, height: 900,
+    width: 1200,
+    height: 900,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -95,7 +109,7 @@ function createMainWindow() {
   if (dev) mainWindow.loadURL("http://localhost:3000");
   else mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
 
-  // Minimize-to-tray behavior: closing hides the app
+  // Minimize-to-tray
   mainWindow.on("close", (e) => {
     if (!isQuitting) {
       e.preventDefault();
@@ -103,6 +117,10 @@ function createMainWindow() {
     }
   });
 }
+
+/* -------------------------------------------------------------------------- */
+/* TRAY WINDOW                                                                */
+/* -------------------------------------------------------------------------- */
 
 function openTrayWindow() {
   if (trayWindow) {
@@ -135,19 +153,28 @@ function openTrayWindow() {
   trayWindow.on("closed", () => { trayWindow = null; });
 }
 
+/* -------------------------------------------------------------------------- */
+/* TRAY ICON + MENU                                                           */
+/* -------------------------------------------------------------------------- */
+
 function registerTray() {
   tray = new Tray(trayGray);
   tray.setToolTip("ECNP Time Tracker");
 
+  // Left-click → open tray popup
   tray.on("click", () => openTrayWindow());
 
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: "Open Mini Timer", click: () => openTrayWindow() },
-    { label: "Open Full App",  click: () => { mainWindow?.show(); mainWindow?.focus(); } },
+    { label: "Open Full App", click: () => { mainWindow?.show(); mainWindow?.focus(); } },
     { type: "separator" },
     { label: "Quit", click: () => { isQuitting = true; app.quit(); } }
   ]));
 }
+
+/* -------------------------------------------------------------------------- */
+/* GLOBAL SHORTCUT                                                            */
+/* -------------------------------------------------------------------------- */
 
 function registerGlobalShortcut() {
   const ok = globalShortcut.register("CommandOrControl+Alt+L", () => {
@@ -155,19 +182,28 @@ function registerGlobalShortcut() {
     if (mainWindow) mainWindow.webContents.send("global-toggle");
     if (!mainWindow?.isVisible() && !trayWindow?.isVisible()) openTrayWindow();
   });
-  if (!ok) console.warn("Global shortcut Ctrl+Alt+L registration failed.");
+  if (!ok) console.warn("Global shortcut registration failed.");
 }
 
 app.whenReady().then(() => {
   registerTray();
   registerGlobalShortcut();
-  createMainWindow();
+
+  if (launchedInTray) {
+    // Open tray popup after slight delay to avoid instant auto-hide
+    setTimeout(() => {
+      openTrayWindow();
+      if (trayWindow) trayWindow.focus();
+    }, 300);
+  } else {
+    createMainWindow();
+  }
 });
 
 app.on("will-quit", () => globalShortcut.unregisterAll());
 
 /* -------------------------------------------------------------------------- */
-/* 4. IPC: TRAY STATE + TRAY HIDE                                             */
+/* TRAY ICON STATE + HIDE POPUP IPC                                           */
 /* -------------------------------------------------------------------------- */
 
 ipcMain.on("timer:state", (_e, { state }) => {
@@ -178,10 +214,12 @@ ipcMain.on("timer:state", (_e, { state }) => {
 ipcMain.on("tray:hide", () => trayWindow?.hide());
 
 /* -------------------------------------------------------------------------- */
-/* 5. TASKS LOAD/SAVE                                                         */
+/* TASKS LOAD/SAVE                                                            */
 /* -------------------------------------------------------------------------- */
 
-function tasksFile() { return path.join(effectiveLogsDir(), "tasks.json"); }
+function tasksFile() {
+  return path.join(effectiveLogsDir(), "tasks.json");
+}
 
 async function loadTasks() {
   try {
@@ -203,17 +241,21 @@ ipcMain.handle("tasks:load", () => loadTasks());
 ipcMain.handle("tasks:save", (_e, d) => saveTasks(d.requester, d.tasks));
 
 /* -------------------------------------------------------------------------- */
-/* 6. DAILY LOGS — PER-USER, MONTHLY SUBFOLDER                                */
+/* DAILY LOGS — WITH MONTHLY SUBFOLDERS                                       */
 /* -------------------------------------------------------------------------- */
 
-function csvEscape(v){ if(v==null)return ""; const s=String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
+function csvEscape(v) {
+  if (v == null) return "";
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 async function appendDailyLogs({ dateISO, user, entries }) {
   const d = new Date(dateISO);
   if (isNaN(d)) throw new Error("Invalid dateISO");
 
   const yyyy = d.getFullYear();
-  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const mm = String(d.getMonth() + 1).padStart(2,"0");
   const dd = String(d.getDate()).padStart(2,"0");
 
   const monthDir = path.join(effectiveLogsDir(), `${yyyy}-${mm}`);
@@ -221,8 +263,8 @@ async function appendDailyLogs({ dateISO, user, entries }) {
 
   const safeUser = (user || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
   const file = path.join(monthDir, `${yyyy}-${mm}-${dd}__${safeUser}.csv`);
-  const header = "date,user,task,minutes\r\n";
 
+  const header = "date,user,task,minutes\r\n";
   if (!fs.existsSync(file)) {
     await fsp.writeFile(file, header, "utf8");
   }
@@ -238,12 +280,13 @@ async function appendDailyLogs({ dateISO, user, entries }) {
 ipcMain.handle("logs:appendDaily", (_e, p) => appendDailyLogs(p));
 
 /* -------------------------------------------------------------------------- */
-/* 7. MONTHLY REPORT (XLSX) — READ/WRITE IN MONTH SUBFOLDER                   */
+/* MONTHLY REPORT (XLSX)                                                      */
 /* -------------------------------------------------------------------------- */
 
 function parseCSV(text){
   const [headerLine, ...rows] = text.trim().split(/\r?\n/);
   const headers = headerLine.split(",");
+
   return rows.map(row=>{
     const out=[]; let cur="", q=false;
     for(let i=0;i<row.length;i++){
@@ -258,7 +301,9 @@ function parseCSV(text){
       }
     }
     out.push(cur);
-    const obj={}; headers.forEach((h,i)=>obj[h]=out[i]);
+
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=out[i]);
     obj.minutes = Number(obj.minutes||0);
     return obj;
   });
@@ -267,12 +312,13 @@ function parseCSV(text){
 async function generateMonthlyReport({ year, month }) {
   const yyyy = Number(year);
   const mm = String(Number(month)).padStart(2, "0");
+
   const base = effectiveLogsDir();
   const monthDir = path.join(base, `${yyyy}-${mm}`);
   ensureDirSync(monthDir);
 
   const files = await fsp.readdir(monthDir);
-  const monthFiles = files.filter((f) => f.endsWith(".csv"));
+  const monthFiles = files.filter(f => f.endsWith(".csv"));
 
   let rows = [];
   for (const f of monthFiles) {
@@ -293,9 +339,15 @@ async function generateMonthlyReport({ year, month }) {
 
   const totalsSheet = [["Task", ...Array.from({length:days},(_,i)=>i+1), "Total (mins)"]];
   taskList.forEach(task=>{
-    let total=0; const row=[task];
-    for(let d=1; d<=days; d++){ const v=byTaskDay[task]?.[d]||0; total+=v; row.push(v); }
-    row.push(total); totalsSheet.push(row);
+    let total=0;
+    const row=[task];
+    for(let d=1; d<=days; d++){
+      const v=byTaskDay[task]?.[d] || 0;
+      total+=v;
+      row.push(v);
+    }
+    row.push(total);
+    totalsSheet.push(row);
   });
 
   const users = Array.from(new Set(rows.map(r=>r.user))).sort();
@@ -307,9 +359,15 @@ async function generateMonthlyReport({ year, month }) {
 
   const byUserSheet = [["Task", ...users, "Total (mins)"]];
   taskList.forEach(task=>{
-    let total=0; const row=[task];
-    users.forEach(u=>{ const v=byTaskUser[task]?.[u]||0; total+=v; row.push(v); });
-    row.push(total); byUserSheet.push(row);
+    let total=0;
+    const row=[task];
+    users.forEach(u=>{
+      const v=byTaskUser[task]?.[u] || 0;
+      total+=v;
+      row.push(v);
+    });
+    row.push(total);
+    byUserSheet.push(row);
   });
 
   const wb = XLSX.utils.book_new();
@@ -318,23 +376,30 @@ async function generateMonthlyReport({ year, month }) {
 
   const outFile = path.join(monthDir, `ECNP-Report-${yyyy}-${mm}.xlsx`);
   XLSX.writeFile(wb, outFile);
+
   return outFile;
 }
 
 ipcMain.handle("reports:generateMonthly", (_e, d) => generateMonthlyReport(d));
 
 /* -------------------------------------------------------------------------- */
-/* 8. SETTINGS IPC (logs dir + launch in tray toggle)                         */
+/* SETTINGS (logs override + startup toggle)                                  */
 /* -------------------------------------------------------------------------- */
 
 ipcMain.handle("settings:getLogsDir", () => effectiveLogsDir());
-ipcMain.handle("settings:openLogsDir", () => { shell.openPath(effectiveLogsDir()); return true; });
+
+ipcMain.handle("settings:openLogsDir", () => {
+  shell.openPath(effectiveLogsDir());
+  return true;
+});
+
 ipcMain.handle("settings:writeTestLog", async () => {
   const f = path.join(effectiveLogsDir(), "test_write.txt");
   await fsp.writeFile(f, "OK");
   return f;
 });
-ipcMain.handle("settings:overrideLogsDir", async (_e,{requester,newPath})=>{
+
+ipcMain.handle("settings:overrideLogsDir", async (_e, { requester, newPath }) => {
   if (requester !== "admin") throw new Error("Only admin can override logs directory.");
   if (!newPath) throw new Error("Invalid path.");
   ensureDirSync(newPath);
@@ -342,16 +407,25 @@ ipcMain.handle("settings:overrideLogsDir", async (_e,{requester,newPath})=>{
   return true;
 });
 
-// Windows Startup shortcut (launch tray mode)
-const launchedInTray = process.argv.includes("--tray");
+// Startup toggle: create/remove Windows Startup shortcut
 ipcMain.handle("settings:setLaunchTray", async (_e, enable) => {
-  const startupDir = path.join(process.env.APPDATA, "Microsoft", "Windows", "Start Menu", "Programs", "Startup");
+  const startupDir = path.join(
+    process.env.APPDATA,
+    "Microsoft",
+    "Windows",
+    "Start Menu",
+    "Programs",
+    "Startup"
+  );
+
   const shortcut = path.join(startupDir, "ECNP-TimeTracker.lnk");
+
   if (enable) {
     shell.writeShortcutLink(shortcut, {
       target: process.execPath,
       args: ["--tray"],
-      description: "ECNP Time Tracker"
+      description: "ECNP Time Tracker",
+      env: { RUN_FROM_STARTUP: "1" }
     });
     return true;
   } else {

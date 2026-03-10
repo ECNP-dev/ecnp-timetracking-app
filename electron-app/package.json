@@ -25,7 +25,7 @@
       "from": "electron/assets",
       "to": "assets"
     }
-  ]
+  ],
 
   "directories": {
     "output": "dist/portable-build",

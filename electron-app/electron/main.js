@@ -169,7 +169,7 @@ function openTrayWindow() {
   }
 
   trayWindow = new BrowserWindow({
-    width: 380,
+    width: 450,
     height: 260,
     frame: false,
     resizable: false,

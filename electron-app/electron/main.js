@@ -81,7 +81,7 @@ let tray = null;
 let isQuitting = false;
 
 // Icons (must exist under electron/assets/)
-const trayGray = path.join(__dirname, "assets", "icon-gray.png");
+const trayGray = path.join(__dirname, "assets", "icon-red.png");
 const trayGreen = path.join(__dirname, "assets", "icon-green.png");
 const appIcon = path.join(__dirname, "assets", "app-icon-256.png");
 

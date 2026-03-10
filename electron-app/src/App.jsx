@@ -1,5 +1,5 @@
 
-// src/App.jsx — MSAL removed; tray mini-mode; pause/resume; last-tasks auto-start;
+// src/App.jsx — MSAL removed; tray mini-mode (Option 2); pause/resume; last-tasks auto-select;
 // daily CSV (user), monthly subfolder reports, admin-only month picker,
 // launch-in-tray toggle, minimize-to-tray, tray icon color updates.
 
@@ -67,12 +67,12 @@ export default function App() {
     if (saved) setStoredUser(saved);
   }, []);
 
-  /* Load tasks */
+  /* Load tasks (IPC via preload) */
   useEffect(() => {
     window.ecnp?.loadTasks?.()
       .then(arr => Array.isArray(arr) ? setTasks(arr) : setTasks(["Focus work", "Meetings", "Support", "Admin"]))
       .catch(() => setTasks(["Focus work", "Meetings", "Support", "Admin"]));
-  }, []);
+  }, []); // baseline behavior preserved [2](https://ecnp-my.sharepoint.com/personal/a_parisella_ecnp_eu/Documents/Microsoft%20Copilot%20Chat%20Files/index.jsx)
 
   /* Logs dir & startup toggle */
   useEffect(() => {
@@ -283,147 +283,94 @@ export default function App() {
     );
   }
 
-  /* ----------------------- TRAY MINI-MODE ----------------------- */
+  /* ----------------------- TRAY MINI-MODE (Option 2) ----------------------- */
   if (isTrayMode) {
-    
-if (isTrayMode) {
-  const statusColor = isRunning ? "green" : isPaused ? "orange" : "gray";
-  const statusLabel = isRunning ? "RUNNING" : isPaused ? "PAUSED" : "STOPPED";
+    const statusColor = isRunning ? "green" : isPaused ? "orange" : "gray";
+    const statusLabel = isRunning ? "RUNNING" : isPaused ? "PAUSED" : "STOPPED";
 
-  return (
-    <div
-      style={{
-        padding: 16,
-        fontFamily: "Segoe UI",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        width: "100%"
-      }}
-      onMouseLeave={() => window.ecnpTimer?.trayHide?.()}
-    >
-      {/* User display */}
-      <div style={{ fontSize: 12, opacity: 0.7 }}>
-        <b>User:</b> {storedUser}
-      </div>
-
-      {/* Task selector */}
-      <label style={{ fontSize: 13 }}>Task</label>
-      <select
-        value={selected[0] || ""}
-        onChange={(e) => setSelected([e.target.value])}
+    return (
+      <div
         style={{
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: "1px solid #ccc",
+          padding: 16,
+          fontFamily: "Segoe UI",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
           width: "100%"
         }}
+        onMouseLeave={() => window.ecnpTimer?.trayHide?.()}
       >
-        <option value="">Select task...</option>
-        {tasks.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-
-      {/* Status row */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: 6
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 600 }}>
-          {Math.floor(elapsedMs / 60000)}m {Math.floor((elapsedMs / 1000) % 60)}s
+        {/* User */}
+        <div style={{ fontSize: 12, opacity: 0.7 }}>
+          <b>User:</b> {storedUser}
         </div>
 
-        <div
+        {/* Task selector */}
+        <label style={{ fontSize: 13 }}>Task</label>
+        <select
+          value={selected[0] || ""}
+          onChange={(e) => setSelected([e.target.value])}
           style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: statusColor,
-            display: "flex",
-            alignItems: "center",
-            gap: 6
+            padding: "8px 12px",
+            borderRadius: 6,
+            border: "1px solid #ccc",
+            width: "100%"
           }}
         >
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: statusColor
-            }}
-          ></span>
-          {statusLabel}
-        </div>
-      </div>
+          <option value="">Select task...</option>
+          {tasks.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
 
-      {/* Action buttons */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 10,
-          marginTop: 8
-        }}
-      >
-        {/* Start */}
-        {!isRunning && !isPaused && (
-          <button
+        {/* Status row */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 6
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 600 }}>
+            {Math.floor(elapsedMs / 60000)}m {Math.floor((elapsedMs / 1000) % 60)}s
+          </div>
+
+          <div
             style={{
-              padding: "10px",
-              background: "green",
-              color: "white",
-              borderRadius: 6,
-              border: "none",
-              fontSize: 15,
-              gridColumn: "span 2"
+              fontSize: 13,
+              fontWeight: 600,
+              color: statusColor,
+              display: "flex",
+              alignItems: "center",
+              gap: 6
             }}
-            onClick={startTimer}
           >
-            Start
-          </button>
-        )}
-
-        {/* Pause + Stop */}
-        {isRunning && (
-          <>
-            <button
+            <span
               style={{
-                padding: "10px",
-                background: "orange",
-                color: "white",
-                borderRadius: 6,
-                border: "none",
-                fontSize: 15
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: statusColor
               }}
-              onClick={pauseTimer}
-            >
-              Pause
-            </button>
-            <button
-              style={{
-                padding: "10px",
-                background: "red",
-                color: "white",
-                borderRadius: 6,
-                border: "none",
-                fontSize: 15
-              }}
-              onClick={stopTimer}
-            >
-              Stop
-            </button>
-          </>
-        )}
+            ></span>
+            {statusLabel}
+          </div>
+        </div>
 
-        {/* Resume + Stop */}
-        {!isRunning && isPaused && (
-          <>
+        {/* Actions grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 10,
+            marginTop: 8
+          }}
+        >
+          {/* Start */}
+          {!isRunning && !isPaused && (
             <button
               style={{
                 padding: "10px",
@@ -431,33 +378,84 @@ if (isTrayMode) {
                 color: "white",
                 borderRadius: 6,
                 border: "none",
-                fontSize: 15
+                fontSize: 15,
+                gridColumn: "span 2"
               }}
-              onClick={resumeTimer}
+              onClick={startTimer}
             >
-              Resume
+              Start
             </button>
-            <button
-              style={{
-                padding: "10px",
-                background: "red",
-                color: "white",
-                borderRadius: 6,
-                border: "none",
-                fontSize: 15
-              }}
-              onClick={stopTimer}
-            >
-              Stop
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
+          )}
 
-  /* ----------------------- MAIN APP ----------------------- */
+          {/* Pause + Stop */}
+          {isRunning && (
+            <>
+              <button
+                style={{
+                  padding: "10px",
+                  background: "orange",
+                  color: "white",
+                  borderRadius: 6,
+                  border: "none",
+                  fontSize: 15
+                }}
+                onClick={pauseTimer}
+              >
+                Pause
+              </button>
+              <button
+                style={{
+                  padding: "10px",
+                  background: "red",
+                  color: "white",
+                  borderRadius: 6,
+                  border: "none",
+                  fontSize: 15
+                }}
+                onClick={stopTimer}
+              >
+                Stop
+              </button>
+            </>
+          )}
+
+          {/* Resume + Stop */}
+          {!isRunning && isPaused && (
+            <>
+              <button
+                style={{
+                  padding: "10px",
+                  background: "green",
+                  color: "white",
+                  borderRadius: 6,
+                  border: "none",
+                  fontSize: 15
+                }}
+                onClick={resumeTimer}
+              >
+                Resume
+              </button>
+              <button
+                style={{
+                  padding: "10px",
+                  background: "red",
+                  color: "white",
+                  borderRadius: 6,
+                  border: "none",
+                  fontSize: 15
+                }}
+                onClick={stopTimer}
+              >
+                Stop
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ----------------------- MAIN APP (window mode) ----------------------- */
   return (
     <div className="wrap stack" role="main" aria-label="Time tracker main" style={{maxWidth:960, margin:"0 auto", padding:24, fontFamily:"Segoe UI, system-ui, -apple-system, Arial"}}>
       {/* Top bar */}
@@ -546,26 +544,72 @@ if (isTrayMode) {
             </div>
           </div>
 
-          <div className="actions" style={{display:"flex", gap:10, flexWrap:"wrap", alignItems:"center"}}>
-            {!isRunning && !isPaused && <button className="btn ok" style={btnOk} onClick={startTimer}>Start</button>}
+          {/* Bigger action buttons in window mode */}
+          <div
+            className="actions"
+            style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}
+          >
+            {!isRunning && !isPaused && (
+              <button
+                className="btn ok"
+                style={{ ...btnOk, padding: "16px 32px", fontSize: "20px" }}
+                onClick={startTimer}
+              >
+                Start
+              </button>
+            )}
+
             {isRunning && (
               <>
-                <button className="btn outline" style={btnOutline} onClick={pauseTimer}>Pause</button>
-                <button className="btn outline" style={btnOutline} onClick={stopTimer}>Stop</button>
+                <button
+                  className="btn outline"
+                  style={{ ...btnOutline, padding: "16px 32px", fontSize: "20px" }}
+                  onClick={pauseTimer}
+                >
+                  Pause
+                </button>
+
+                <button
+                  className="btn outline"
+                  style={{ ...btnOutline, padding: "16px 32px", fontSize: "20px" }}
+                  onClick={stopTimer}
+                >
+                  Stop
+                </button>
               </>
             )}
+
             {!isRunning && isPaused && (
               <>
-                <button className="btn ok" style={btnOk} onClick={resumeTimer}>Resume</button>
-                <button className="btn outline" style={btnOutline} onClick={stopTimer}>Stop</button>
+                <button
+                  className="btn ok"
+                  style={{ ...btnOk, padding: "16px 32px", fontSize: "20px" }}
+                  onClick={resumeTimer}
+                >
+                  Resume
+                </button>
+
+                <button
+                  className="btn outline"
+                  style={{ ...btnOutline, padding: "16px 32px", fontSize: "20px" }}
+                  onClick={stopTimer}
+                >
+                  Stop
+                </button>
               </>
             )}
-            <button className="btn outline" style={btnOutline} onClick={divideEvenly} title="Evenly divide 8h among selected tasks">
+
+            <button
+              className="btn outline"
+              style={{ ...btnOutline, padding: "12px 20px", fontSize: "16px" }}
+              onClick={divideEvenly}
+              title="Evenly divide 8h among selected tasks"
+            >
               Divide evenly (8h)
             </button>
 
-            <div style={{ marginLeft: "auto", fontSize: 16 }}>
-              Elapsed: {Math.floor(elapsedMs/60000)}m {Math.floor((elapsedMs/1000)%60)}s
+            <div style={{ marginLeft: "auto", fontSize: 18 }}>
+              Elapsed: {Math.floor(elapsedMs / 60000)}m {Math.floor((elapsedMs / 1000) % 60)}s
             </div>
           </div>
         </section>

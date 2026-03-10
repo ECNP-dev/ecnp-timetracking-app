@@ -1,40 +1,84 @@
-
-name: build-electron
+name: Build & Deploy ECNP Time Tracker
 
 on:
   push:
     branches: [ main ]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
-  build:
+
+  build-electron:
     runs-on: windows-latest
 
-    defaults:
-      run:
-        working-directory: electron-app
-
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js 18 for Electron
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 18
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
+        working-directory: electron-app
         run: npm install
 
-      - name: Build renderer
-        run: npm run react-build
-
-      - name: Build raw portable app (win-unpacked)
+      - name: Clear electron-builder cache
+        run: |
+          if (Test-Path "$env:LOCALAPPDATA\electron-builder") {
+            Remove-Item -Recurse -Force "$env:LOCALAPPDATA\electron-builder"
+          } else {
+            echo "no cache"
+          }
+      - name: Show Vite inputs (CI proof)
+        working-directory: electron-app
+        shell: pwsh
+        run: |
+          Write-Host "PWD:"; Get-Location
+          Write-Host "`n-- electron-app root listing --"
+          Get-ChildItem -Force
+          Write-Host "`n-- index.html (first 30 lines) --"
+          Get-Content -TotalCount 30 .\index.html
+          Write-Host "`n-- src listing --"
+          Get-ChildItem .\src
+      - name: Build portable Electron version
+        working-directory: electron-app
         run: npm run dist
 
-      - name: Upload win-unpacked folder
+      - name: Upload Portable Build
         uses: actions/upload-artifact@v4
         with:
-          name: ECNP-TimeTracker-win-unpacked
-          path: electron-app/dist/win-unpacked/**
-          if-no-files-found: error
+          name: ECNP-TimeTracker-Portable
+          path: electron-app/dist/portable-build/**
+
+  deploy-functions:
+    runs-on: ubuntu-latest
+    needs: build-electron
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18 for Azure Functions
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install backend dependencies
+        working-directory: functions-api
+        run: npm install --legacy-peer-deps
+
+      - name: Zip Function App package
+        run: |
+          cd functions-api
+          zip -r ../functions.zip .
+      - name: Azure Login using Service Principal
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Function App
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ secrets.AZURE_FUNCTIONAPP_NAME }}
+          package: functions.zip

@@ -81,7 +81,7 @@ let tray = null;
 let isQuitting = false;
 
 // Icons (must exist under electron/assets/)
-const trayGray = path.join(__dirname, "assets", "icon-red.png");
+const trayGray = path.join(__dirname, "assets", "icon-gray.png");
 const trayGreen = path.join(__dirname, "assets", "icon-green.png");
 const appIcon = path.join(__dirname, "assets", "app-icon-256.png");
 
@@ -158,7 +158,7 @@ function createMainWindow() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  5. Tray Popup Window                                                      */
+/*  5. Tray Popup Window (with cache bypass + hash enforcement)               */
 /* -------------------------------------------------------------------------- */
 
 function openTrayWindow() {
@@ -184,9 +184,23 @@ function openTrayWindow() {
     }
   });
 
+  // 🔧 Ensure we never load stale cached HTML/JS in the tray window
+  try {
+    trayWindow.webContents.session.clearCache();
+  } catch {}
+
   const dev = !app.isPackaged;
   if (dev) trayWindow.loadURL("http://localhost:3000/#/tray");
   else trayWindow.loadFile(path.join(__dirname, "../dist/index.html"), { hash: "tray" });
+
+  // 🔧 Enforce the correct hash route after load, just in case
+  trayWindow.webContents.once("did-finish-load", () => {
+    try {
+      trayWindow.webContents.executeJavaScript(
+        `if (!window.location.hash || window.location.hash !== "#/tray") { window.location.hash = "#/tray"; }`
+      );
+    } catch {}
+  });
 
   trayWindow.once("ready-to-show", () => trayWindow.show());
   trayWindow.on("blur", () => trayWindow?.hide());
@@ -265,7 +279,7 @@ app.whenReady().then(() => {
 app.on("will-quit", () => globalShortcut.unregisterAll());
 
 /* -------------------------------------------------------------------------- */
-/*  9. Tray State Updates + Hide                                               */
+/*  9. Tray State Updates + Hide + Tooltip                                     */
 /* -------------------------------------------------------------------------- */
 
 ipcMain.on("timer:state", (_e, { state }) => {
@@ -276,7 +290,7 @@ ipcMain.on("timer:state", (_e, { state }) => {
 // Hide tray popup on mouse leave (called from tray UI)
 ipcMain.on("tray:hide", () => trayWindow?.hide());
 
-// NEW: tooltip updates
+// NEW: tooltip updates (current task + elapsed time)
 ipcMain.on("tray:updateTooltip", (_e, text) => {
   if (tray) tray.setToolTip(text);
 });
@@ -532,3 +546,4 @@ ipcMain.handle("settings:setLaunchTray", async (_e, enable) => {
     return false;
   }
 });
+``

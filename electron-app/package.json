@@ -1,4 +1,3 @@
-
 {
   "name": "ecnp-time-tracker",
   "version": "1.0.0",
@@ -11,40 +10,32 @@
     "dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && npm run electron\"",
     "dist": "npm run react-build && electron-builder"
   },
+  "build": {
+    "appId": "org.ecnp.timetracker",
+    "productName": "ECNP Time Tracker",
 
-"build": {
-  "appId": "org.ecnp.timetracker",
-  "productName": "ECNP Time Tracker",
+    "directories": {
+      "output": "dist/portable-build",
+      "buildResources": "build"
+    },
 
-  "files": [
-    "electron/**/*",
-    "dist/**/*"
-  ],
-  "extraResources": [
-    {
-      "from": "electron/assets",
-      "to": "assets"
-    }
-  ],
+    "asar": false,
 
-  "directories": {
-    "output": "dist/portable-build",
-    "buildResources": "build"
-  },
-
-  "asar": false,
-
-  "win": {
-    "target": [
-      { "target": "dir", "arch": "x64" },
-      { "target": "zip", "arch": "x64" }
+    "files": [
+      "electron/**/*",
+      "dist/**/*"
     ],
-    "sign": false,
-    "signAndEditExecutable": false,
-    "verifyUpdateCodeSignature": false
-  }
-},
-  
+
+    "win": {
+      "target": [
+        { "target": "dir", "arch": "x64" },
+        { "target": "zip", "arch": "x64" }
+      ],
+      "sign": false,
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false
+    }
+  },
   "dependencies": {
     "@azure/msal-browser": "^3.12.0",
     "@azure/msal-react": "^2.0.17",

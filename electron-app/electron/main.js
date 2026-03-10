@@ -1,13 +1,13 @@
 
-// electron/main.js — UPDATED TO OPEN WINDOW BY DEFAULT
+// electron/main.js — UPDATED VERSION
 // Includes:
-// - Universal OneDrive detection (shared ECNP logs folder)
-// - User-specific daily logs (with monthly subfolders)
-// - Tray system (tray icon, tray popup, tray window)
-// - Tray icon state updates (gray/green)
-// - Minimize-to-tray
-// - Global shortcut Ctrl+Alt+L
-// - Settings: override logs folder, run at startup
+// - Universal OneDrive detection
+// - User-specific daily logs (monthly subfolders)
+// - Tray system (tray icon, popup, minimize-to-tray)
+// - Tray icon state updates (green/gray)
+// - Global shortcut (Ctrl+Alt+L)
+// - Launch in tray mode at startup
+// - Auto-create desktop shortcut on first run (using app-icon-256.png)
 // - Tasks, logs, monthly reports IPC
 
 const { app, BrowserWindow, ipcMain, shell, Tray, Menu, globalShortcut } = require("electron");
@@ -64,12 +64,11 @@ let trayWindow = null;
 let tray = null;
 let isQuitting = false;
 
-// tray icons (these MUST exist at electron/assets/)
-const trayGray = path.join(__dirname, "assets", "icon-red.png");
+// tray icons MUST exist at electron/assets/
+const trayGray = path.join(__dirname, "assets", "icon-gray.png");
 const trayGreen = path.join(__dirname, "assets", "icon-green.png");
 
-// We only start in tray mode if launched from Startup AND --tray flag exists
-// (prevents normal launches from accidentally opening in tray)
+// Only start in tray mode if invoked BY startup shortcut (RUN_FROM_STARTUP=1)
 const launchedInTray =
   process.argv.includes("--tray") &&
   process.env.RUN_FROM_STARTUP === "1";
@@ -91,13 +90,39 @@ app.on("second-instance", () => {
 });
 
 /* -------------------------------------------------------------------------- */
-/* MAIN WINDOW                                                                */
+/* 3. AUTO-CREATE DESKTOP SHORTCUT ON FIRST RUN                               */
+/* -------------------------------------------------------------------------- */
+
+function autoCreateDesktopShortcut() {
+  const flag = path.join(app.getPath("userData"), "desktop-shortcut-created.flag");
+  if (fs.existsSync(flag)) return;
+
+  try {
+    const desktop = path.join(app.getPath("desktop"), "ECNP Time Tracker.lnk");
+    const iconPath = path.join(__dirname, "assets", "app-icon-256.png");
+
+    shell.writeShortcutLink(desktop, {
+      target: process.execPath,
+      description: "ECNP Time Tracker",
+      icon: iconPath
+    });
+
+    fs.writeFileSync(flag, "done");
+    console.log("[Shortcut] Desktop shortcut created.");
+  } catch (err) {
+    console.error("[Shortcut] Failed to create desktop shortcut:", err);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 4. CREATE MAIN WINDOW                                                      */
 /* -------------------------------------------------------------------------- */
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
+    icon: path.join(__dirname, "assets", "app-icon-256.png"), // <-- new app icon
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -109,7 +134,7 @@ function createMainWindow() {
   if (dev) mainWindow.loadURL("http://localhost:3000");
   else mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
 
-  // Minimize-to-tray
+  // Minimize-to-tray: closing hides app
   mainWindow.on("close", (e) => {
     if (!isQuitting) {
       e.preventDefault();
@@ -119,7 +144,7 @@ function createMainWindow() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* TRAY WINDOW                                                                */
+/* 5. TRAY WINDOW + POPUP                                                     */
 /* -------------------------------------------------------------------------- */
 
 function openTrayWindow() {
@@ -154,14 +179,13 @@ function openTrayWindow() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* TRAY ICON + MENU                                                           */
+/* 6. TRAY ICON + MENU                                                        */
 /* -------------------------------------------------------------------------- */
 
 function registerTray() {
   tray = new Tray(trayGray);
   tray.setToolTip("ECNP Time Tracker");
 
-  // Left-click → open tray popup
   tray.on("click", () => openTrayWindow());
 
   tray.setContextMenu(Menu.buildFromTemplate([
@@ -173,7 +197,7 @@ function registerTray() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* GLOBAL SHORTCUT                                                            */
+/* 7. GLOBAL SHORTCUT                                                         */
 /* -------------------------------------------------------------------------- */
 
 function registerGlobalShortcut() {
@@ -185,15 +209,24 @@ function registerGlobalShortcut() {
   if (!ok) console.warn("Global shortcut registration failed.");
 }
 
+/* -------------------------------------------------------------------------- */
+/* 8. APP READY                                                               */
+/* -------------------------------------------------------------------------- */
+
 app.whenReady().then(() => {
+
+  // Auto-create desktop shortcut
+  autoCreateDesktopShortcut();
+
+  // Register tray and global hotkey
   registerTray();
   registerGlobalShortcut();
 
+  // Launch in tray only when invoked from Startup
   if (launchedInTray) {
-    // Open tray popup after slight delay to avoid instant auto-hide
     setTimeout(() => {
       openTrayWindow();
-      if (trayWindow) trayWindow.focus();
+      trayWindow?.focus();
     }, 300);
   } else {
     createMainWindow();
@@ -203,7 +236,7 @@ app.whenReady().then(() => {
 app.on("will-quit", () => globalShortcut.unregisterAll());
 
 /* -------------------------------------------------------------------------- */
-/* TRAY ICON STATE + HIDE POPUP IPC                                           */
+/* 9. IPC: TRAY STATE + HIDE                                                  */
 /* -------------------------------------------------------------------------- */
 
 ipcMain.on("timer:state", (_e, { state }) => {
@@ -214,7 +247,7 @@ ipcMain.on("timer:state", (_e, { state }) => {
 ipcMain.on("tray:hide", () => trayWindow?.hide());
 
 /* -------------------------------------------------------------------------- */
-/* TASKS LOAD/SAVE                                                            */
+/* 10. TASKS LOAD/SAVE                                                        */
 /* -------------------------------------------------------------------------- */
 
 function tasksFile() {
@@ -241,7 +274,7 @@ ipcMain.handle("tasks:load", () => loadTasks());
 ipcMain.handle("tasks:save", (_e, d) => saveTasks(d.requester, d.tasks));
 
 /* -------------------------------------------------------------------------- */
-/* DAILY LOGS — WITH MONTHLY SUBFOLDERS                                       */
+/* 11. DAILY LOGS (MONTHLY SUBFOLDERS)                                        */
 /* -------------------------------------------------------------------------- */
 
 function csvEscape(v) {
@@ -255,8 +288,8 @@ async function appendDailyLogs({ dateISO, user, entries }) {
   if (isNaN(d)) throw new Error("Invalid dateISO");
 
   const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2,"0");
-  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
 
   const monthDir = path.join(effectiveLogsDir(), `${yyyy}-${mm}`);
   ensureDirSync(monthDir);
@@ -269,9 +302,9 @@ async function appendDailyLogs({ dateISO, user, entries }) {
     await fsp.writeFile(file, header, "utf8");
   }
 
-  const lines = entries.map(e =>
-    `${csvEscape(dateISO)},${csvEscape(user)},${csvEscape(e.task)},${csvEscape(e.minutes)}\r\n`
-  ).join("");
+  const lines = entries
+    .map(e => `${csvEscape(dateISO)},${csvEscape(user)},${csvEscape(e.task)},${csvEscape(e.minutes)}\r\n`)
+    .join("");
 
   await fsp.appendFile(file, lines, "utf8");
   return file;
@@ -280,31 +313,33 @@ async function appendDailyLogs({ dateISO, user, entries }) {
 ipcMain.handle("logs:appendDaily", (_e, p) => appendDailyLogs(p));
 
 /* -------------------------------------------------------------------------- */
-/* MONTHLY REPORT (XLSX)                                                      */
+/* 12. MONTHLY REPORT (YEAR/MONTH SELECT)                                     */
 /* -------------------------------------------------------------------------- */
 
-function parseCSV(text){
+function parseCSV(text) {
   const [headerLine, ...rows] = text.trim().split(/\r?\n/);
   const headers = headerLine.split(",");
 
-  return rows.map(row=>{
-    const out=[]; let cur="", q=false;
-    for(let i=0;i<row.length;i++){
-      const c=row[i];
-      if(q){
-        if(c === '"' && row[i+1] === '"'){ cur+='"'; i++; }
-        else if(c === '"'){ q=false; } else cur+=c;
+  return rows.map(row => {
+    const out = [];
+    let cur = "", q = false;
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (q) {
+        if (c === '"' && row[i + 1] === '"') { cur += '"'; i++; }
+        else if (c === '"') { q = false; }
+        else cur += c;
       } else {
-        if(c === '"') q=true;
-        else if(c === ","){ out.push(cur); cur=""; }
-        else cur+=c;
+        if (c === '"') q = true;
+        else if (c === ",") { out.push(cur); cur = ""; }
+        else cur += c;
       }
     }
     out.push(cur);
 
-    const obj={};
-    headers.forEach((h,i)=>obj[h]=out[i]);
-    obj.minutes = Number(obj.minutes||0);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = out[i]);
+    obj.minutes = Number(obj.minutes || 0);
     return obj;
   });
 }
@@ -337,33 +372,34 @@ async function generateMonthlyReport({ year, month }) {
     byTaskDay[r.task][day] = (byTaskDay[r.task][day] || 0) + r.minutes;
   });
 
-  const totalsSheet = [["Task", ...Array.from({length:days},(_,i)=>i+1), "Total (mins)"]];
-  taskList.forEach(task=>{
-    let total=0;
-    const row=[task];
-    for(let d=1; d<=days; d++){
-      const v=byTaskDay[task]?.[d] || 0;
-      total+=v;
+  const totalsSheet = [["Task", ...Array.from({ length: days }, (_, i) => i + 1), "Total (mins)"]];
+  taskList.forEach(task => {
+    let total = 0;
+    const row = [task];
+    for (let d = 1; d <= days; d++) {
+      const v = byTaskDay[task]?.[d] || 0;
+      total += v;
       row.push(v);
     }
     row.push(total);
     totalsSheet.push(row);
   });
 
-  const users = Array.from(new Set(rows.map(r=>r.user))).sort();
+  const users = Array.from(new Set(rows.map(r => r.user))).sort();
   const byTaskUser = {};
-  rows.forEach(r=>{
+  rows.forEach(r => {
     byTaskUser[r.task] ??= {};
-    byTaskUser[r.task][r.user] = (byTaskUser[r.task][r.user] || 0) + r.minutes;
+    byTaskUser[r.task][r.user] =
+      (byTaskUser[r.task][r.user] || 0) + r.minutes;
   });
 
   const byUserSheet = [["Task", ...users, "Total (mins)"]];
-  taskList.forEach(task=>{
-    let total=0;
-    const row=[task];
-    users.forEach(u=>{
-      const v=byTaskUser[task]?.[u] || 0;
-      total+=v;
+  taskList.forEach(task => {
+    let total = 0;
+    const row = [task];
+    users.forEach(u => {
+      const v = byTaskUser[task]?.[u] || 0;
+      total += v;
       row.push(v);
     });
     row.push(total);
@@ -383,7 +419,7 @@ async function generateMonthlyReport({ year, month }) {
 ipcMain.handle("reports:generateMonthly", (_e, d) => generateMonthlyReport(d));
 
 /* -------------------------------------------------------------------------- */
-/* SETTINGS (logs override + startup toggle)                                  */
+/* 13. SETTINGS (LOGS + STARTUP)                                              */
 /* -------------------------------------------------------------------------- */
 
 ipcMain.handle("settings:getLogsDir", () => effectiveLogsDir());
@@ -407,7 +443,7 @@ ipcMain.handle("settings:overrideLogsDir", async (_e, { requester, newPath }) =>
   return true;
 });
 
-// Startup toggle: create/remove Windows Startup shortcut
+// Startup shortcut
 ipcMain.handle("settings:setLaunchTray", async (_e, enable) => {
   const startupDir = path.join(
     process.env.APPDATA,

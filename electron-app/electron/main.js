@@ -31,29 +31,37 @@ const XLSX = require("xlsx");
 /*  1. OneDrive Shared Folder Detection                                        */
 /* -------------------------------------------------------------------------- */
 
+
 function findECNPLogsFolder() {
-  const root = process.env.USERPROFILE;
-  if (!root) return null;
+  const oneDrive = process.env.OneDrive;
 
-  const entries = fs
-    .readdirSync(root, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && e.name.startsWith("OneDrive"))
-    .map((e) => path.join(root, e.name));
+  if (!oneDrive) return null;
 
-  for (const oneDriveRoot of entries) {
-    const officeDocs = path.join(oneDriveRoot, "Office - Documents");
-    if (fs.existsSync(officeDocs)) {
-      return path.join(
-        officeDocs,
-        "General",
-        "ICT",
-        "Timetracking",
-        "ecnp-time-tracking-app",
-        "logs"
-      );
-    }
-  }
-  return null;
+  const logsPath = path.join(
+    oneDrive,
+    "Office - Documents",
+    "General",
+    "ICT",
+    "Timetracking",
+    "ecnp-time-tracking-app",
+    "logs"
+  );
+
+  return logsPath;
+}
+
+const autoLogs = findECNPLogsFolder();
+
+if (autoLogs) {
+  ensureDirSync(autoLogs);  // create if missing
+  LOGS_DIR = autoLogs;
+} else {
+  console.warn("OneDrive not available — using local fallback.");
+
+  const fallback = path.join(app.getPath("documents"), "ECNP-Logs");
+  ensureDirSync(fallback);
+
+  LOGS_DIR = fallback;
 }
 
 const autoLogs = findECNPLogsFolder();

@@ -27,10 +27,17 @@ const fs = require("fs");
 const fsp = fs.promises;
 const XLSX = require("xlsx");
 
+
 /* -------------------------------------------------------------------------- */
 /*  1. OneDrive Shared Folder Detection                                        */
 /* -------------------------------------------------------------------------- */
 
+function ensureDirSync(dir) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+let LOGS_DIR;
+global._LOGS_DIR_OVERRIDE = null;
 
 function findECNPLogsFolder() {
   const oneDrive = process.env.OneDrive;
@@ -53,10 +60,11 @@ function findECNPLogsFolder() {
 const autoLogs = findECNPLogsFolder();
 
 if (autoLogs) {
-  ensureDirSync(autoLogs);  // create if missing
+  ensureDirSync(autoLogs); // ensures folder exists
   LOGS_DIR = autoLogs;
+  console.log("[Logs] Using OneDrive:", LOGS_DIR);
 } else {
-  console.warn("OneDrive not available — using local fallback.");
+  console.warn("[Logs] OneDrive not available — using fallback.");
 
   const fallback = path.join(app.getPath("documents"), "ECNP-Logs");
   ensureDirSync(fallback);
@@ -64,19 +72,11 @@ if (autoLogs) {
   LOGS_DIR = fallback;
 }
 
-const autoLogs = findECNPLogsFolder();
-if (!autoLogs) throw new Error("ECNP shared OneDrive folder not found.");
-
-let LOGS_DIR = autoLogs;
-global._LOGS_DIR_OVERRIDE = null;
-
 function effectiveLogsDir() {
   return global._LOGS_DIR_OVERRIDE || LOGS_DIR;
 }
 
-function ensureDirSync(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
+// ensure final directory exists
 ensureDirSync(effectiveLogsDir());
 
 /* -------------------------------------------------------------------------- */
